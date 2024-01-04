@@ -56,7 +56,7 @@ function buildUserDataScript(githubRegistrationToken, label) {
       'mkdir actions-runner && cd actions-runner',
       'echo "${config.input.preRunnerScript}" > pre-runner-script.sh',
       'source pre-runner-script.sh',
-      'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="v${runnerVersion}/actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz',
+      'ARCH=$(uname -m); if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; else ARCH="v${runnerVersion}/actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz"; fi',
       'tar xzf ./actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz',
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
