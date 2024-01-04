@@ -2,7 +2,7 @@ const { EC2Client, RunInstancesCommand, TerminateInstancesCommand, waitUntilInst
 const core = require('@actions/core');
 const config = require('./config');
 
-const runnerVersion = '2.309.0'
+const runnerVersion = '2.311.0'
 
 // User data scripts are run as the root user
 function buildUserDataScript(githubRegistrationToken, label) {
@@ -56,7 +56,8 @@ function buildUserDataScript(githubRegistrationToken, label) {
       'mkdir actions-runner && cd actions-runner',
       `echo "${config.input.preRunnerScript}" > pre-runner-script.sh`,
       'source pre-runner-script.sh',
-      'tar xzf ./actions-runner-linux-amd64-${runnerVersion}.tar.gz',
+      `curl -o actions-runner-linux-x64-${runnerVersion}.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-x64-${runnerVersion}.tar.gz`
+      `tar xzf ./actions-runner-linux-x64-${runnerVersion}.tar.gz`,
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
       './run.sh',
