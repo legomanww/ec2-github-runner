@@ -2,7 +2,8 @@ const { EC2Client, RunInstancesCommand, TerminateInstancesCommand, waitUntilInst
 const core = require('@actions/core');
 const config = require('./config');
 
-const runnerVersion = '2.311.0'
+// for some reason causes an error "Error: TypeError: runnerVersion is not a function", have no time to debug it, will hardcode the version
+// const runnerVersion = '2.311.0'
 
 // User data scripts are run as the root user
 function buildUserDataScript(githubRegistrationToken, label) {
@@ -29,8 +30,8 @@ function buildUserDataScript(githubRegistrationToken, label) {
         'mkdir actions-runner; cd actions-runner',
         `echo "${config.input.preRunnerScript}" > pre-runner-script.ps1`,
         '& pre-runner-script.ps1',
-        `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-win-x64-${runnerVersion}.zip -OutFile actions-runner-win-x64-${runnerVersion}.zip`,
-        `Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-${runnerVersion}.zip", "$PWD")`,
+        `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-win-x64-2.311.0.zip -OutFile actions-runner-win-x64-2.311.0.zip`,
+        `Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-2.311.0.zip", "$PWD")`,
         `./config.cmd --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label} --name ${label} --unattended`,
         './run.cmd',
         '</powershell>',
@@ -56,8 +57,8 @@ function buildUserDataScript(githubRegistrationToken, label) {
       'mkdir actions-runner && cd actions-runner',
       `echo "${config.input.preRunnerScript}" > pre-runner-script.sh`,
       'source pre-runner-script.sh',
-      `curl -o actions-runner-linux-x64-${runnerVersion}.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-x64-${runnerVersion}.tar.gz`
-      `tar xzf ./actions-runner-linux-x64-${runnerVersion}.tar.gz`,
+      `curl -o actions-runner-linux-x64-2.311.0.tar.gz -L https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-x64-2.311.0.tar.gz`
+      `tar xzf ./actions-runner-linux-x64-2.311.0.tar.gz`,
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
       './run.sh',

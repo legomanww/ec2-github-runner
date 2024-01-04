@@ -17,7 +17,7 @@ class Config {
       runnerHomeDir: core.getInput('runner-home-dir'),
       awsKeyPairName: core.getInput('aws-key-pair-name'),
       preRunnerScript: core.getInput('pre-runner-script'),
-      marketType: core.getInput('market-type'),
+      marketType: core.getInput('market-type')
     };
 
     const tags = JSON.parse(core.getInput('aws-resource-tags'));
