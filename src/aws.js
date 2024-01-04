@@ -1,16 +1,50 @@
-const AWS = require('aws-sdk');
+const { EC2Client, RunInstancesCommand, TerminateInstancesCommand, waitUntilInstanceRunning } = require("@aws-sdk/client-ec2");
 const core = require('@actions/core');
 const config = require('./config');
 
+const runnerVersion = '2.309.0'
+
 // User data scripts are run as the root user
 function buildUserDataScript(githubRegistrationToken, label) {
+  core.info(`Building data script for ${config.input.ec2Os}`)
+
+  if (config.input.ec2Os === 'windows') {
+    // Name the instance the same as the label to avoid machine name conflicts in GitHub.
+    if (config.input.runnerHomeDir) {
+      // If runner home directory is specified, we expect the actions-runner software (and dependencies)
+      // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
+      return [
+        '<powershell>',
+        'cd "${config.input.runnerHomeDir}"',
+        'echo "${config.input.preRunnerScript}" > pre-runner-script.ps1',
+        '& pre-runner-script.bat',
+        `./config.cmd --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label} --name ${label} --unattended`,
+        './run.cmd',
+        '</powershell>',
+        '<persist>false</persist>',
+      ]
+    } else {
+      return [
+        '<powershell>',
+        'mkdir actions-runner; cd actions-runner',
+        'echo "${config.input.preRunnerScript}" > pre-runner-script.ps1',
+        '& pre-runner-script.ps1',
+        `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-win-x64-${runnerVersion}.zip -OutFile actions-runner-win-x64-${runnerVersion}.zip`,
+        `Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-${runnerVersion}.zip", "$PWD")`,
+        `./config.cmd --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label} --name ${label} --unattended`,
+        './run.cmd',
+        '</powershell>',
+        '<persist>false</persist>',
+      ]
+    }
+  } else if (config.input.ec2Os === 'linux') {
   if (config.input.runnerHomeDir) {
     // If runner home directory is specified, we expect the actions-runner software (and dependencies)
     // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
     return [
       '#!/bin/bash',
       `cd "${config.input.runnerHomeDir}"`,
-      `echo "${config.input.preRunnerScript}" > pre-runner-script.sh`,
+      'echo "${config.input.preRunnerScript}" > pre-runner-script.sh',
       'source pre-runner-script.sh',
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
@@ -20,20 +54,23 @@ function buildUserDataScript(githubRegistrationToken, label) {
     return [
       '#!/bin/bash',
       'mkdir actions-runner && cd actions-runner',
-      `echo "${config.input.preRunnerScript}" > pre-runner-script.sh`,
+      'echo "${config.input.preRunnerScript}" > pre-runner-script.sh',
       'source pre-runner-script.sh',
-      'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="x64" ;; esac && export RUNNER_ARCH=${ARCH}',
-      'curl -O -L https://github.com/actions/runner/releases/download/v2.299.1/actions-runner-linux-${RUNNER_ARCH}-2.299.1.tar.gz',
-      'tar xzf ./actions-runner-linux-${RUNNER_ARCH}-2.299.1.tar.gz',
+      'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="v${runnerVersion}/actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz',
+      'tar xzf ./actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz',
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
       './run.sh',
     ];
   }
+  } else {
+    core.error('Not supported ec2-os.');
+    return []
+  }
 }
 
 async function startEc2Instance(label, githubRegistrationToken) {
-  const ec2 = new AWS.EC2();
+  const client = new EC2Client();
 
   const userData = buildUserDataScript(githubRegistrationToken, label);
 
@@ -49,8 +86,10 @@ async function startEc2Instance(label, githubRegistrationToken) {
     TagSpecifications: config.tagSpecifications,
   };
 
+  const command = new RunInstancesCommand(params);
+
   try {
-    const result = await ec2.runInstances(params).promise();
+    const result = await client.send(command);
     const ec2InstanceId = result.Instances[0].InstanceId;
     core.info(`AWS EC2 instance ${ec2InstanceId} is started`);
     return ec2InstanceId;
@@ -61,16 +100,18 @@ async function startEc2Instance(label, githubRegistrationToken) {
 }
 
 async function terminateEc2Instance() {
-  const ec2 = new AWS.EC2();
+  const client = new EC2Client();
 
   const params = {
     InstanceIds: [config.input.ec2InstanceId],
   };
 
+  const command = new TerminateInstancesCommand(params);
+
   try {
-    await ec2.terminateInstances(params).promise();
+    await client.send(command);
     core.info(`AWS EC2 instance ${config.input.ec2InstanceId} is terminated`);
-    return;
+
   } catch (error) {
     core.error(`AWS EC2 instance ${config.input.ec2InstanceId} termination error`);
     throw error;
@@ -78,16 +119,15 @@ async function terminateEc2Instance() {
 }
 
 async function waitForInstanceRunning(ec2InstanceId) {
-  const ec2 = new AWS.EC2();
+  const client = new EC2Client();
 
   const params = {
     InstanceIds: [ec2InstanceId],
   };
 
   try {
-    await ec2.waitFor('instanceRunning', params).promise();
+    await waitUntilInstanceRunning({client, maxWaitTime: 30, minDelay: 3}, params);
     core.info(`AWS EC2 instance ${ec2InstanceId} is up and running`);
-    return;
   } catch (error) {
     core.error(`AWS EC2 instance ${ec2InstanceId} initialization error`);
     throw error;
