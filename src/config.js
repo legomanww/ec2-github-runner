@@ -17,12 +17,16 @@ class Config {
       runnerHomeDir: core.getInput('runner-home-dir'),
       awsKeyPairName: core.getInput('aws-key-pair-name'),
       preRunnerScript: core.getInput('pre-runner-script'),
+      marketType: core.getInput('market-type'),
     };
 
     const tags = JSON.parse(core.getInput('aws-resource-tags'));
     this.tagSpecifications = null;
     if (tags.length > 0) {
-      this.tagSpecifications = [{ResourceType: 'instance', Tags: tags}, {ResourceType: 'volume', Tags: tags}];
+      this.tagSpecifications = [
+        { ResourceType: 'instance', Tags: tags },
+        { ResourceType: 'volume', Tags: tags },
+      ];
     }
 
     // the values of github.context.repo.owner and github.context.repo.repo are taken from
@@ -51,6 +55,9 @@ class Config {
       }
       if (this.input.ec2Os !== 'windows' && this.input.ec2Os !== 'linux') {
         throw new Error(`Wrong ec2-os. Allowed values: windows or linux.`);
+      }
+      if (this.marketType?.length > 0 && this.input.marketType !== 'spot') {
+        throw new Error(`Invalid 'market-type' input. Allowed values: spot.`);
       }
     } else if (this.input.mode === 'stop') {
       if (!this.input.label || !this.input.ec2InstanceId) {
