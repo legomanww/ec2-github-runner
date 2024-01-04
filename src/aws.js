@@ -69,6 +69,19 @@ function buildUserDataScript(githubRegistrationToken, label) {
   }
 }
 
+function buildMarketOptions() {
+  if (config.input.marketType === 'spot') {
+    return {
+      MarketType: config.input.marketType,
+      SpotOptions: {
+        SpotInstanceType: 'one-time',
+      },
+    };
+  }
+
+  return undefined;
+}
+
 async function startEc2Instance(label, githubRegistrationToken) {
   const client = new EC2Client();
 
@@ -84,6 +97,7 @@ async function startEc2Instance(label, githubRegistrationToken) {
     SecurityGroupIds: [config.input.securityGroupId],
     IamInstanceProfile: { Name: config.input.iamRoleName },
     TagSpecifications: config.tagSpecifications,
+    InstanceMarketOptions: buildMarketOptions(),
   };
 
   const command = new RunInstancesCommand(params);
