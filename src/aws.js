@@ -15,9 +15,9 @@ function buildUserDataScript(githubRegistrationToken, label) {
       // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
       return [
         '<powershell>',
-        'cd "${config.input.runnerHomeDir}"',
-        'echo "${config.input.preRunnerScript}" > pre-runner-script.ps1',
-        '& pre-runner-script.bat',
+        `cd "${config.input.runnerHomeDir}"`,
+        `echo "${config.input.preRunnerScript}" > pre-runner-script.ps1`,
+        '& pre-runner-script.ps1',
         `./config.cmd --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label} --name ${label} --unattended`,
         './run.cmd',
         '</powershell>',
@@ -27,7 +27,7 @@ function buildUserDataScript(githubRegistrationToken, label) {
       return [
         '<powershell>',
         'mkdir actions-runner; cd actions-runner',
-        'echo "${config.input.preRunnerScript}" > pre-runner-script.ps1',
+        `echo "${config.input.preRunnerScript}" > pre-runner-script.ps1`,
         '& pre-runner-script.ps1',
         `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-win-x64-${runnerVersion}.zip -OutFile actions-runner-win-x64-${runnerVersion}.zip`,
         `Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-${runnerVersion}.zip", "$PWD")`,
@@ -44,7 +44,7 @@ function buildUserDataScript(githubRegistrationToken, label) {
     return [
       '#!/bin/bash',
       `cd "${config.input.runnerHomeDir}"`,
-      'echo "${config.input.preRunnerScript}" > pre-runner-script.sh',
+      `echo "${config.input.preRunnerScript}" > pre-runner-script.sh`,
       'source pre-runner-script.sh',
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
@@ -54,10 +54,9 @@ function buildUserDataScript(githubRegistrationToken, label) {
     return [
       '#!/bin/bash',
       'mkdir actions-runner && cd actions-runner',
-      'echo "${config.input.preRunnerScript}" > pre-runner-script.sh',
+      `echo "${config.input.preRunnerScript}" > pre-runner-script.sh`,
       'source pre-runner-script.sh',
-      'ARCH=$(uname -m); if [[ $ARCH == "aarch64" ]]; then ARCH="arm64"; else ARCH="v${runnerVersion}/actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz"; fi',
-      'tar xzf ./actions-runner-linux-${RUNNER_ARCH}-${runnerVersion}.tar.gz',
+      'tar xzf ./actions-runner-linux-amd64-${runnerVersion}.tar.gz',
       'export RUNNER_ALLOW_RUNASROOT=1',
       `./config.sh --url https://github.com/${config.githubContext.owner}/${config.githubContext.repo} --token ${githubRegistrationToken} --labels ${label}`,
       './run.sh',
