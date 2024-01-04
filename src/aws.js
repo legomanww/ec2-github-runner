@@ -15,6 +15,11 @@ function buildUserDataScript(githubRegistrationToken, label) {
       // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
       return [
         '<powershell>',
+        'winrm quickconfig -q',
+        `winrm set winrm/config/service/Auth '@{Basic="true"}'`,
+        `winrm set winrm/config/service '@{AllowUnencrypted="true"}'`,
+        `winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="0"}'`,
+
         `cd "${config.input.runnerHomeDir}"`,
         `echo "${config.input.preRunnerScript}" > pre-runner-script.ps1`,
         '& pre-runner-script.ps1',
@@ -26,6 +31,11 @@ function buildUserDataScript(githubRegistrationToken, label) {
     } else {
       return [
         '<powershell>',
+        'winrm quickconfig -q',
+        `winrm set winrm/config/service/Auth '@{Basic="true"}'`,
+        `winrm set winrm/config/service '@{AllowUnencrypted="true"}'`,
+        `winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="0"}'`,
+
         'mkdir actions-runner; cd actions-runner',
         `echo "${config.input.preRunnerScript}" > pre-runner-script.ps1`,
         '& pre-runner-script.ps1',
