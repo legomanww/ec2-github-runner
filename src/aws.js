@@ -109,6 +109,9 @@ async function startEc2Instance(label, githubRegistrationToken) {
     KeyName: config.input.awsKeyPairName,
     TagSpecifications: config.tagSpecifications,
     InstanceMarketOptions: buildMarketOptions(),
+    CpuOptions: {
+      ThreadsPerCore: 1
+    },
   };
 
   const command = new RunInstancesCommand(params);
