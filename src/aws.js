@@ -121,7 +121,7 @@ async function startEc2Instance(label, githubRegistrationToken) {
 
   while (retryCount < maxRetries) {
     try {
-      params.SubnetId = config.input.subnetIds[subnetIndex];
+      params.SubnetId = config.subnetIds[subnetIndex];
       const command = new RunInstancesCommand(params);
       const result = await client.send(command);
       const ec2InstanceId = result.Instances[0].InstanceId;
@@ -135,7 +135,7 @@ async function startEc2Instance(label, githubRegistrationToken) {
         throw error;
       }
       core.warning(`Retrying... (Attempt ${retryCount})`);
-      subnetIndex = (subnetIndex + 1) % config.input.subnetIds.length;
+      subnetIndex = (subnetIndex + 1) % config.subnetIds.length;
       await new Promise(resolve => setTimeout(resolve, 30000)); // 30-second pause
     }
   }
