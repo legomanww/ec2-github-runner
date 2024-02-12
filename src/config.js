@@ -8,7 +8,7 @@ class Config {
       githubToken: core.getInput('github-token'),
       ec2ImageId: core.getInput('ec2-image-id'),
       ec2InstanceType: core.getInput('ec2-instance-type'),
-      subnetIds: JSON.parse(core.getInput('subnet-id-list')),
+      subnetIds: core.getInput('subnet-id-list'),
       securityGroupId: core.getInput('security-group-id'),
       label: core.getInput('label'),
       ec2InstanceId: core.getInput('ec2-instance-id'),
@@ -19,6 +19,12 @@ class Config {
       preRunnerScript: core.getInput('pre-runner-script'),
       marketType: core.getInput('market-type')
     };
+
+    const subnetIds = JSON.parse(core.getInput('subnet-id-list'));
+    this.subnetIds = null;
+    if (subnetIds.length > 0) {
+      this.subnetIds = subnetIds;
+    }
 
     const tags = JSON.parse(core.getInput('aws-resource-tags'));
     this.tagSpecifications = null;
