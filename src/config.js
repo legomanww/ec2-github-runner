@@ -8,7 +8,6 @@ class Config {
       githubToken: core.getInput('github-token'),
       ec2ImageId: core.getInput('ec2-image-id'),
       ec2InstanceType: core.getInput('ec2-instance-type'),
-      subnetId: core.getInput('subnet-id'),
       securityGroupId: core.getInput('security-group-id'),
       label: core.getInput('label'),
       ec2InstanceId: core.getInput('ec2-instance-id'),
@@ -19,6 +18,12 @@ class Config {
       preRunnerScript: core.getInput('pre-runner-script'),
       marketType: core.getInput('market-type')
     };
+
+    const subnetIds = JSON.parse(core.getInput('subnet-id-list'));
+    this.subnetIds = null;
+    if (subnetIds.length > 0) {
+      this.subnetIds = subnetIds;
+    }
 
     const tags = JSON.parse(core.getInput('aws-resource-tags'));
     this.tagSpecifications = null;
@@ -50,7 +55,7 @@ class Config {
     }
 
     if (this.input.mode === 'start') {
-      if (!this.input.ec2ImageId || !this.input.ec2InstanceType || !this.input.ec2Os || !this.input.subnetId || !this.input.securityGroupId) {
+      if (!this.input.ec2ImageId || !this.input.ec2InstanceType || !this.input.ec2Os || !this.subnetIds || !this.input.securityGroupId) {
         throw new Error(`Not all the required inputs are provided for the 'start' mode`);
       }
       if (this.input.ec2Os !== 'windows' && this.input.ec2Os !== 'linux') {
