@@ -103,28 +103,41 @@ async function startEc2Instance(label, githubRegistrationToken) {
     MinCount: 1,
     MaxCount: 1,
     UserData: Buffer.from(userData.join('\n')).toString('base64'),
-    SubnetId: config.input.subnetId,
     SecurityGroupIds: [config.input.securityGroupId],
     IamInstanceProfile: { Name: config.input.iamRoleName },
     KeyName: config.input.awsKeyPairName,
     TagSpecifications: config.tagSpecifications,
     InstanceMarketOptions: buildMarketOptions(),
-    CpuOptions: {
-      ThreadsPerCore: 1
-    },
+    // use this to turn off the 2vCPU=1CPU hyperthreading that aws has by default for all instances,
+    // allows more actualy CPU to be used by one single thread.
+    // CpuOptions: {
+    //   ThreadsPerCore: 1
+    // },
   };
 
-  const command = new RunInstancesCommand(params);
-  
-  try {
-    const result = await client.send(command);
-    const ec2InstanceId = result.Instances[0].InstanceId;
-    core.info(`AWS EC2 instance ${ec2InstanceId} is started`);
-    core.info(`All params: ${params}`);
-    return ec2InstanceId;
-  } catch (error) {
-    core.error('AWS EC2 instance starting error');
-    throw error;
+  const maxRetries = 10;
+  let retryCount = 0;
+  let subnetIndex = 0;
+
+  while (retryCount < maxRetries) {
+    try {
+      params.SubnetId = config.input.subnetIds[subnetIndex];
+      const command = new RunInstancesCommand(params);
+      const result = await client.send(command);
+      const ec2InstanceId = result.Instances[0].InstanceId;
+      core.info(`AWS EC2 instance ${ec2InstanceId} is started`);
+      core.info(`All params: ${params}`);
+      return ec2InstanceId;
+    } catch (error) {
+      core.error('AWS EC2 instance starting error');
+      retryCount++;
+      if (retryCount === maxRetries) {
+        throw error;
+      }
+      core.warning(`Retrying... (Attempt ${retryCount})`);
+      subnetIndex = (subnetIndex + 1) % config.input.subnetIds.length;
+      await new Promise(resolve => setTimeout(resolve, 30000)); // 30-second pause
+    }
   }
 }
 
