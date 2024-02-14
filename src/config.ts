@@ -29,7 +29,6 @@ export interface ConfigInterface {
   ec2StorageIops: number | undefined;
   ec2StorageType: VolumeType | undefined;
   ec2StorageThroughput: number | undefined;
-  generateUniqueLabel: () => string;
 }
 
 export class Config implements ConfigInterface {
@@ -67,7 +66,7 @@ export class Config implements ConfigInterface {
     this.githubRepo = github.context.repo.repo;
     this.githubOwner = github.context.repo.owner;
     this.githubActionRunnerVersion = core.getInput('runner-version');
-    this.githubActionRunnerLabel = core.getInput('label');
+    this.githubActionRunnerLabel = this.getStringOrUndefined('label') || this.generateUniqueLabel();
     this.githubRunnerHomeDir = core.getInput('runner-home-dir');
     this.githubRunnerPreRunnerScript = core.getInput('pre-runner-script');
 
