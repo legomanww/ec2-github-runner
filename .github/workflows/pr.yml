@@ -25,8 +25,12 @@ jobs:
     name: Update dist
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Repo
         uses: actions/checkout@v4
+      - name: Checkout PR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ github.event.pull_request.number }}
       - name: Install packages
         run: npm ci
       - name: Run linter
@@ -41,4 +45,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add dist/
           git commit -m "Update dist" || echo "No changes to commit"
-          git push origin ${{ github.ref }}
+          git push
