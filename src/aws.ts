@@ -164,11 +164,12 @@ export class AwsUtils {
     let retryCount = 1;
 
     core.group("AWS Run Instance params", async () => {
-      core.info(JSON.stringify(params));
+      const {UserData: _, ...simpleParams} = params;
+      core.info(JSON.stringify(simpleParams, null, 2));
     });
 
     while (retryCount < maxRetries) {
-      core.info(`Starting AWS EC2 instance... (Attempt ${retryCount})`);
+      core.info(`Starting AWS EC2 instance... (Attempt ${retryCount}/${maxRetries})`);
       
       try {
         const command = new RunInstancesCommand(params);
@@ -180,13 +181,16 @@ export class AwsUtils {
         }
       } catch (error) {
         core.error('AWS EC2 instance starting error');
+        core.group("AWS EC2 instance starting error details", async () => {
+          core.info(JSON.stringify(error));
+        });
+        retryCount++;
         if (retryCount >= maxRetries) {
           throw error;
         }
+        core.warning(`Retrying... (Attempt ${retryCount}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, 30000)); // 30-second pause
       }
-      retryCount++;
-      core.warning(`Retrying... (Attempt ${retryCount})`);
-      await new Promise(resolve => setTimeout(resolve, 30000)); // 30-second pause
     }
   }
 
