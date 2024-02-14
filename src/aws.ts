@@ -5,7 +5,6 @@ import {
   RunInstancesCommand,
   RunInstancesCommandInput,
   TerminateInstancesCommand,
-  _InstanceType,
   waitUntilInstanceRunning,
 } from '@aws-sdk/client-ec2';
 import * as core from '@actions/core';
@@ -148,7 +147,7 @@ export class AwsUtils {
 
     const params: RunInstancesCommandInput = {
       ImageId: this.config.ec2AmiId,
-      InstanceType: this.config.ec2InstanceType as _InstanceType,
+      InstanceType: this.config.ec2InstanceType,
       MinCount: 1,
       MaxCount: 1,
       UserData: Buffer.from(userData.join('\n')).toString('base64'),

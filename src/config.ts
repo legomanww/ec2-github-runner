@@ -1,6 +1,6 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { TagSpecification, VolumeType } from '@aws-sdk/client-ec2';
+import { TagSpecification, VolumeType, _InstanceType } from '@aws-sdk/client-ec2';
 
 export interface ConfigInterface {
   actionMode: string;
@@ -18,7 +18,7 @@ export interface ConfigInterface {
 
   ec2InstanceId: string;
   ec2MaxRetries: number;
-  ec2InstanceType: string;
+  ec2InstanceType: _InstanceType;
   ec2Os: string;
   ec2AmiId: string;
   ec2InstanceTags: TagSpecification[] | undefined;
@@ -48,12 +48,12 @@ export class Config implements ConfigInterface {
 
   ec2InstanceId: string;
   ec2MaxRetries: number;
-  ec2InstanceType: string;
   ec2Os: string;
   ec2AmiId: string;
-  ec2InstanceTags: TagSpecification[] | undefined;
   ec2SecurityGroupId: string;
   ec2SubnetId: string;
+  ec2InstanceType: _InstanceType;
+  ec2InstanceTags: TagSpecification[] | undefined;
   ec2MarketType: string | undefined;
   ec2StorageSize: number | undefined;
   ec2StorageIops: number | undefined;
@@ -62,10 +62,6 @@ export class Config implements ConfigInterface {
 
   constructor() {
     this.actionMode = core.getInput('mode');
-
-    this.awsIamRoleName = core.getInput('iam-role-name');
-    // TODO: core.getInput() returns an empty string if not defined, need to make it go to `undefined`
-    this.awsKeyPairName = core.getInput('aws-key-pair-name');
 
     this.githubToken = core.getInput('github-token');
     this.githubRepo = github.context.repo.repo;
@@ -76,17 +72,21 @@ export class Config implements ConfigInterface {
     this.githubRunnerPreRunnerScript = core.getInput('pre-runner-script');
 
     this.ec2InstanceId = core.getInput('ec2-instance-id');
-    this.ec2MaxRetries = Number.parseInt(core.getInput('max-retries'));
-    this.ec2InstanceType = core.getInput('ec2-instance-type');
+    this.ec2MaxRetries = this.getIntOrUndefined('max-retries') || 1;
+    const instanceType = this.getTypeOrUndefined<_InstanceType>('ec2-instance-type');
+    this.ec2InstanceType = instanceType || _InstanceType.t3_micro; // do this separately so it can be verified
     this.ec2Os = core.getInput('ec2-os');
     this.ec2AmiId = core.getInput('ec2-image-id');
     this.ec2SecurityGroupId = core.getInput('security-group-id');
     this.ec2SubnetId = core.getInput('subnet-id');
-    this.ec2MarketType = core.getInput('market-type');
-    this.ec2StorageSize = Number.parseFloat(core.getInput('volume-size'));
-    this.ec2StorageIops = Number.parseInt(core.getInput('volume-iops'));
-    this.ec2StorageType = core.getInput('volume-type') as VolumeType;
-    this.ec2StorageThroughput = Number.parseInt(core.getInput('volume-throughput'));
+    this.ec2MarketType = this.getStringOrUndefined('market-type');
+    this.ec2StorageSize = this.getFloatOrUndefined('volume-size');
+    this.ec2StorageIops = this.getIntOrUndefined('volume-iops');
+    this.ec2StorageType = this.getTypeOrUndefined<VolumeType>('volume-type');
+    this.ec2StorageThroughput = this.getIntOrUndefined('volume-throughput');
+
+    this.awsIamRoleName = this.getStringOrUndefined('iam-role-name');
+    this.awsKeyPairName = this.getStringOrUndefined('aws-key-pair-name');
 
     const tags = JSON.parse(core.getInput('aws-resource-tags'));
     this.ec2InstanceTags = undefined;
@@ -110,13 +110,13 @@ export class Config implements ConfigInterface {
     }
 
     if (this.actionMode === 'start') {
-      if (this.ec2AmiId === '' || this.ec2InstanceType === '' || this.ec2Os === '' || this.ec2SubnetId === '' || this.ec2SecurityGroupId === '') {
+      if (this.ec2AmiId === '' || instanceType === undefined || this.ec2Os === '' || this.ec2SubnetId === '' || this.ec2SecurityGroupId === '') {
         throw new Error(`Not all the required inputs are provided for the 'start' mode`);
       }
       if (this.ec2Os !== 'windows' && this.ec2Os !== 'linux') {
         throw new Error(`Wrong ec2-os. Allowed values: 'windows' or 'linux'.`);
       }
-      if (this.ec2MarketType?.length > 0 && this.ec2MarketType !== 'spot') {
+      if (this.ec2MarketType && this.ec2MarketType !== 'spot') {
         throw new Error(`Invalid 'market-type' input. Allowed values: spot.`);
       }
     } else if (this.actionMode === 'stop') {
@@ -130,5 +130,49 @@ export class Config implements ConfigInterface {
 
   generateUniqueLabel(): string {
     return Math.random().toString(36).substring(2, 7);
+  }
+
+  getStringOrUndefined(name: string) : string | undefined {
+    const val = core.getInput(name);
+    if (val === '') {
+      return undefined;
+    }
+    return val;
+  }
+
+  getTypeOrUndefined<T>(name: string) : T | undefined {
+    const val = core.getInput(name);
+    if (val === '') {
+      return undefined;
+    }
+    return val as T;
+  }
+
+  getIntOrUndefined(name: string) : number | undefined {
+    const val = core.getInput(name);
+    if (val === '') {
+      return undefined;
+    }
+    try {
+      return Number.parseInt(val);
+    }
+    catch {
+      core.warning(`Could not convert ${name}'s provided value of ${val} to an integer.`);
+      return undefined;
+    }
+  }
+
+  getFloatOrUndefined(name: string) : number | undefined {
+    const val = core.getInput(name);
+    if (val === '') {
+      return undefined;
+    }
+    try {
+      return Number.parseFloat(val);
+    }
+    catch {
+      core.warning(`Could not convert ${name}'s provided value of ${val} to a floating point number.`);
+      return undefined;
+    }
   }
 }
