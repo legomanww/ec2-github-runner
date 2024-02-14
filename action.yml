@@ -17,8 +17,9 @@ inputs:
     required: true
   runner-version:
     description: >-
-      Version of the Runner software to use. Defaults to the latest
+      Version of the Runner software to use. Defaults to 'latest'
     required: false
+    default: latest
   ec2-image-id:
     description: >-
       EC2 Image Id (AMI). The new runner will be launched from this image.

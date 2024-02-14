@@ -23,7 +23,7 @@ export class GithubUtils {
   }
 
   async getRunnerVersion(): Promise<string> {
-    if (this.config.githubActionRunnerVersion === '') {
+    if (this.config.githubActionRunnerVersion !== 'latest') {
       return this.config.githubActionRunnerVersion.replace('v', '');
     }
 

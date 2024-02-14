@@ -165,8 +165,7 @@ export class AwsUtils {
     let retryCount = 0;
 
     core.group("AWS Run Instance params", async () => {
-      const {UserData: _, ...simpleParams} = params;
-      core.info(JSON.stringify(simpleParams, null, 2));
+      core.info(JSON.stringify(params, null, 2));
     });
 
     while (retryCount < maxRetries) {
