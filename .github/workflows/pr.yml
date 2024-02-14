@@ -19,3 +19,26 @@ jobs:
         run: npm install
       - name: Run linter
         run: npm run lint
+
+  update-dist:
+    name: Update dist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Install packages
+        run: npm ci
+      - name: Run linter
+        run: npm run lint
+      - name: Package
+        run: npm run package
+        env:
+          NODE_OPTIONS: --openssl-legacy-provider
+      - name: Commit
+        run: |
+          git config --global user.name "GitHub Actions"
+          git add dist/
+          git commit -m "Update dist" || echo "No changes to commit"
+          git push origin
