@@ -41,10 +41,9 @@ inputs:
       Maximum number of attempts for starting
     required: false
     default: '10'
-  subnet-id-list:
+  subnet-id:
     description: >-
-      VPC Subnet Id list. The subnets should belong to the same VPC as the specified security group.
-      Those will be used in order, in case one fails to spawn ec2 because of unavailable capacity in AZ.
+      VPC Subnet Id. The subnet should belong to the same VPC as the specified security group.
       This input is required if you use the 'start' mode.
     required: false
   security-group-id:
