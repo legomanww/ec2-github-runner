@@ -29,6 +29,7 @@ export interface ConfigInterface {
   ec2StorageIops: number | undefined;
   ec2StorageType: VolumeType | undefined;
   ec2StorageThroughput: number | undefined;
+  ec2StorageDeviceName: string | undefined;
 }
 
 export class Config implements ConfigInterface {
@@ -58,6 +59,7 @@ export class Config implements ConfigInterface {
   ec2StorageIops: number | undefined;
   ec2StorageType: VolumeType | undefined;
   ec2StorageThroughput: number | undefined;
+  ec2StorageDeviceName: string | undefined;
 
   constructor() {
     this.actionMode = core.getInput('mode');
@@ -83,6 +85,7 @@ export class Config implements ConfigInterface {
     this.ec2StorageIops = this.getIntOrUndefined('volume-iops');
     this.ec2StorageType = this.getTypeOrUndefined<VolumeType>('volume-type');
     this.ec2StorageThroughput = this.getIntOrUndefined('volume-throughput');
+    this.ec2StorageDeviceName = this.getStringOrUndefined('volume-device-name');
 
     this.awsIamRoleName = this.getStringOrUndefined('iam-role-name');
     this.awsKeyPairName = this.getStringOrUndefined('aws-key-pair-name');
@@ -111,6 +114,10 @@ export class Config implements ConfigInterface {
     if (this.actionMode === 'start') {
       if (this.ec2AmiId === '' || instanceType === undefined || this.ec2Os === '' || this.ec2SubnetId === '' || this.ec2SecurityGroupId === '') {
         throw new Error(`Not all the required inputs are provided for the 'start' mode`);
+      }
+      if (this.ec2StorageSize !== undefined && (this.ec2StorageDeviceName === undefined))
+      {
+        throw new Error('Must specify a volume device name if a size is specified');
       }
       if (this.ec2Os !== 'windows' && this.ec2Os !== 'linux') {
         throw new Error(`Wrong ec2-os. Allowed values: 'windows' or 'linux'.`);
