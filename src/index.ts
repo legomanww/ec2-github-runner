@@ -15,7 +15,6 @@ async function start(config: ConfigInterface): Promise<void> {
   const githubRegistrationToken = await gh.getRegistrationToken();
   const ec2InstanceId = await aws.startEc2Instance(githubRegistrationToken);
   if (ec2InstanceId === undefined || ec2InstanceId === '') {
-    core.error('Could not get EC2 Instance ID');
     core.setFailed('Could not get EC2 Instance ID');
     return;
   }

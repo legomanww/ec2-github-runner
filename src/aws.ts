@@ -120,6 +120,7 @@ export class AwsUtils {
 
     return [
       {
+        DeviceName: this.config.ec2StorageDeviceName,
         Ebs: {
           DeleteOnTermination: true,
           VolumeSize: this.config.ec2StorageSize,
@@ -161,7 +162,7 @@ export class AwsUtils {
     };
 
     const maxRetries = this.config.ec2MaxRetries;
-    let retryCount = 1;
+    let retryCount = 0;
 
     core.group("AWS Run Instance params", async () => {
       const {UserData: _, ...simpleParams} = params;
