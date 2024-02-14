@@ -1,7 +1,6 @@
-import * as core from "@actions/core";
-import * as github from "@actions/github";
+import * as core from '@actions/core';
+import * as github from '@actions/github';
 import { TagSpecification, VolumeType } from '@aws-sdk/client-ec2';
-import { _InstanceType } from '@aws-sdk/client-ec2/dist-types/models/models_0';
 
 export interface ConfigInterface {
   actionMode: string;
@@ -19,7 +18,7 @@ export interface ConfigInterface {
 
   ec2InstanceId: string;
   ec2MaxRetries: number;
-  ec2InstanceType: _InstanceType;
+  ec2InstanceType: string;
   ec2Os: string;
   ec2AmiId: string;
   ec2InstanceTags: TagSpecification[] | undefined;
@@ -49,7 +48,7 @@ export class Config implements ConfigInterface {
 
   ec2InstanceId: string;
   ec2MaxRetries: number;
-  ec2InstanceType: _InstanceType;
+  ec2InstanceType: string;
   ec2Os: string;
   ec2AmiId: string;
   ec2InstanceTags: TagSpecification[] | undefined;
@@ -78,7 +77,7 @@ export class Config implements ConfigInterface {
 
     this.ec2InstanceId = core.getInput('ec2-instance-id');
     this.ec2MaxRetries = Number.parseInt(core.getInput('max-retries'));
-    this.ec2InstanceType = core.getInput('ec2-instance-type') as _InstanceType;
+    this.ec2InstanceType = core.getInput('ec2-instance-type');
     this.ec2Os = core.getInput('ec2-os');
     this.ec2AmiId = core.getInput('ec2-image-id');
     this.ec2SecurityGroupId = core.getInput('security-group-id');
@@ -102,26 +101,26 @@ export class Config implements ConfigInterface {
     // validate input
     //
 
-    if (!this.actionMode) {
+    if (this.actionMode === '') {
       throw new Error(`The 'mode' input is not specified`);
     }
 
-    if (!this.githubToken) {
+    if (this.githubToken === '') {
       throw new Error(`The 'github-token' input is not specified`);
     }
 
     if (this.actionMode === 'start') {
-      if (!this.ec2AmiId || !this.ec2InstanceType || !this.ec2Os || !this.ec2SubnetId || !this.ec2SecurityGroupId) {
+      if (this.ec2AmiId === '' || this.ec2InstanceType === '' || this.ec2Os === '' || this.ec2SubnetId === '' || this.ec2SecurityGroupId === '') {
         throw new Error(`Not all the required inputs are provided for the 'start' mode`);
       }
       if (this.ec2Os !== 'windows' && this.ec2Os !== 'linux') {
-        throw new Error(`Wrong ec2-os. Allowed values: windows or linux.`);
+        throw new Error(`Wrong ec2-os. Allowed values: 'windows' or 'linux'.`);
       }
       if (this.ec2MarketType?.length > 0 && this.ec2MarketType !== 'spot') {
         throw new Error(`Invalid 'market-type' input. Allowed values: spot.`);
       }
     } else if (this.actionMode === 'stop') {
-      if (!this.githubActionRunnerLabel || !this.ec2InstanceId) {
+      if (this.githubActionRunnerLabel === '' || this.ec2InstanceId === '') {
         throw new Error(`Not all the required inputs are provided for the 'stop' mode`);
       }
     } else {
@@ -129,7 +128,7 @@ export class Config implements ConfigInterface {
     }
   }
 
-  generateUniqueLabel() : string {
+  generateUniqueLabel(): string {
     return Math.random().toString(36).substring(2, 7);
   }
 }

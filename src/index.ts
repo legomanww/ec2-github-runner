@@ -1,24 +1,23 @@
-import { GithubUtils } from "./gh";
+import { GithubUtils } from './gh';
 import { Config, ConfigInterface } from './config';
-import * as core from "@actions/core";
+import * as core from '@actions/core';
 import { AwsUtils } from './aws';
 
-function setOutput(label: string, ec2InstanceId: string) {
+function setOutput(label: string, ec2InstanceId: string): void {
   core.setOutput('label', label);
   core.setOutput('ec2-instance-id', ec2InstanceId);
 }
 
-async function start(config: ConfigInterface) {
+async function start(config: ConfigInterface): Promise<void> {
   const gh = new GithubUtils(config);
   const aws = new AwsUtils(config);
 
   const label = config.generateUniqueLabel();
   const githubRegistrationToken = await gh.getRegistrationToken();
   const ec2InstanceId = await aws.startEc2Instance(githubRegistrationToken);
-  if (!ec2InstanceId)
-  {
-    core.error("Could not get EC2 Instance ID");
-    core.setFailed("Could not get EC2 Instance ID");
+  if (ec2InstanceId === undefined || ec2InstanceId === '') {
+    core.error('Could not get EC2 Instance ID');
+    core.setFailed('Could not get EC2 Instance ID');
     return;
   }
   setOutput(label, ec2InstanceId);
@@ -26,7 +25,7 @@ async function start(config: ConfigInterface) {
   await gh.waitForRunnerRegistered(label);
 }
 
-async function stop(config: ConfigInterface) {
+async function stop(config: ConfigInterface): Promise<void> {
   const gh = new GithubUtils(config);
   const aws = new AwsUtils(config);
 
@@ -34,20 +33,21 @@ async function stop(config: ConfigInterface) {
   await gh.removeRunner();
 }
 
-(async function () {
+export async function run() {
   try {
     const config: ConfigInterface = new Config();
     if (config.actionMode === 'start') {
       await start(config);
-    }
-    else {
+    } else {
       await stop(config);
     }
   } catch (error) {
-    if (error instanceof Error){
+    if (error instanceof Error) {
       core.error(error);
       core.setFailed(error.message);
     }
-    core.error("Unknown error occurred");
+    core.error('Unknown error occurred');
   }
-})();
+}
+
+run();

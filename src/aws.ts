@@ -1,33 +1,35 @@
 import {
   BlockDeviceMapping,
-  EC2Client, InstanceMarketOptionsRequest,
+  EC2Client,
+  InstanceMarketOptionsRequest,
   RunInstancesCommand,
   RunInstancesCommandInput,
   TerminateInstancesCommand,
-  waitUntilInstanceRunning
+  _InstanceType,
+  waitUntilInstanceRunning,
 } from '@aws-sdk/client-ec2';
-import * as core from "@actions/core";
+import * as core from '@actions/core';
 import { ConfigInterface } from './config';
 import { GithubUtils } from './gh';
 
 export class AwsUtils {
   config: ConfigInterface;
   gh: GithubUtils;
-  
+
   constructor(config: ConfigInterface) {
     this.config = config;
     this.gh = new GithubUtils(config);
   }
 
-// User data scripts are run as the root user
-  buildUserDataScript(githubRegistrationToken: string) : string[] {
-    core.info(`Building data script for ${this.config.ec2Os}`)
-  
-    const runnerVersion = this.gh.getRunnerVersion();
-    
+  // User data scripts are run as the root user
+  async buildUserDataScript(githubRegistrationToken: string): Promise<string[]> {
+    core.info(`Building data script for ${this.config.ec2Os}`);
+
+    const runnerVersion = await this.gh.getRunnerVersion();
+
     if (this.config.ec2Os === 'windows') {
       // Name the instance the same as the label to avoid machine name conflicts in GitHub.
-      if (this.config.githubRunnerHomeDir) {
+      if (this.config.githubRunnerHomeDir !== '') {
         // If runner home directory is specified, we expect the actions-runner software (and dependencies)
         // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
         return [
@@ -44,7 +46,7 @@ export class AwsUtils {
           './run.cmd',
           '</powershell>',
           '<persist>false</persist>',
-        ]
+        ];
       } else {
         return [
           '<powershell>',
@@ -62,10 +64,10 @@ export class AwsUtils {
           './run.cmd',
           '</powershell>',
           '<persist>false</persist>',
-        ]
+        ];
       }
     } else if (this.config.ec2Os === 'linux') {
-      if (this.config.githubRunnerHomeDir) {
+      if (this.config.githubRunnerHomeDir !== '') {
         // If runner home directory is specified, we expect the actions-runner software (and dependencies)
         // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
         return [
@@ -92,11 +94,11 @@ export class AwsUtils {
       }
     } else {
       core.error('Not supported ec2-os.');
-      return []
+      return [];
     }
   }
 
-  buildMarketOptions() : InstanceMarketOptionsRequest | undefined {
+  buildMarketOptions(): InstanceMarketOptionsRequest | undefined {
     if (this.config.ec2MarketType === 'spot') {
       return {
         MarketType: this.config.ec2MarketType,
@@ -110,10 +112,10 @@ export class AwsUtils {
   }
 
   buildBlockMappings(): BlockDeviceMapping[] | undefined {
-    if (!this.config.ec2StorageSize &&
-        !this.config.ec2StorageIops &&
-        !this.config.ec2StorageType &&
-        !this.config.ec2StorageThroughput) {
+    if (this.config.ec2StorageSize === undefined &&
+      this.config.ec2StorageIops === undefined &&
+      this.config.ec2StorageType === undefined &&
+      this.config.ec2StorageThroughput === undefined) {
       return undefined;
     }
 
@@ -127,11 +129,12 @@ export class AwsUtils {
           Throughput: this.config.ec2StorageThroughput,
         },
       },
-    ]
+    ];
   }
 
   buildKeyConfig(): string | undefined {
-    if (!this.config.awsKeyPairName) {
+    if (this.config.awsKeyPairName === undefined ||
+      this.config.awsKeyPairName === '') {
       return undefined;
     }
 
@@ -141,11 +144,11 @@ export class AwsUtils {
   async startEc2Instance(githubRegistrationToken: string): Promise<string | undefined> {
     const client = new EC2Client();
 
-    const userData = this.buildUserDataScript(githubRegistrationToken);
+    const userData = await this.buildUserDataScript(githubRegistrationToken);
 
     const params: RunInstancesCommandInput = {
       ImageId: this.config.ec2AmiId,
-      InstanceType: this.config.ec2InstanceType,
+      InstanceType: this.config.ec2InstanceType as _InstanceType,
       MinCount: 1,
       MaxCount: 1,
       UserData: Buffer.from(userData.join('\n')).toString('base64'),
@@ -159,32 +162,31 @@ export class AwsUtils {
     };
 
     const maxRetries = this.config.ec2MaxRetries;
-    let retryCount = 0;
+    let retryCount = 1;
 
     while (retryCount < maxRetries) {
       try {
         const command = new RunInstancesCommand(params);
         const result = await client.send(command);
-        if (!result.Instances || result.Instances.length == 0) {
-          throw new Error("No instance");
+        if (result.Instances?.length === 1) {
+          const ec2InstanceId = result.Instances[0].InstanceId;
+          core.info(`AWS EC2 instance ${ec2InstanceId} has started`);
+          core.info(`All params: ${JSON.stringify(params)}`);
+          return ec2InstanceId;
         }
-        const ec2InstanceId = result.Instances[0].InstanceId;
-        core.info(`AWS EC2 instance ${ec2InstanceId} has started`);
-        core.info(`All params: ${params}`);
-        return ec2InstanceId;
       } catch (error) {
-        core.error(`AWS EC2 instance starting error: ${error}`);
-        retryCount++;
+        core.error('AWS EC2 instance starting error');
         if (retryCount === maxRetries) {
           throw error;
         }
-        core.warning(`Retrying... (Attempt ${retryCount})`);
-        await new Promise(resolve => setTimeout(resolve, 30000)); // 30-second pause
       }
+      retryCount++;
+      core.warning(`Retrying... (Attempt ${retryCount})`);
+      await new Promise(resolve => setTimeout(resolve, 30000)); // 30-second pause
     }
   }
 
-  async terminateEc2Instance() {
+  async terminateEc2Instance(): Promise<void> {
     const client = new EC2Client();
 
     const params = {
@@ -196,14 +198,13 @@ export class AwsUtils {
     try {
       await client.send(command);
       core.info(`AWS EC2 instance ${this.config.ec2InstanceId} has terminated`);
-
     } catch (error) {
       core.error(`AWS EC2 instance ${this.config.ec2InstanceId} termination error`);
       throw error;
     }
   }
 
-  async waitForInstanceRunning(ec2InstanceId: string) {
+  async waitForInstanceRunning(ec2InstanceId: string): Promise<void> {
     const client = new EC2Client();
 
     const params = {
