@@ -163,19 +163,24 @@ export class AwsUtils {
     const maxRetries = this.config.ec2MaxRetries;
     let retryCount = 1;
 
+    core.group("AWS Run Instance params", async () => {
+      core.info(JSON.stringify(params));
+    });
+
     while (retryCount < maxRetries) {
+      core.info(`Starting AWS EC2 instance... (Attempt ${retryCount})`);
+      
       try {
         const command = new RunInstancesCommand(params);
         const result = await client.send(command);
         if (result.Instances?.length === 1) {
           const ec2InstanceId = result.Instances[0].InstanceId;
           core.info(`AWS EC2 instance ${ec2InstanceId} has started`);
-          core.info(`All params: ${JSON.stringify(params)}`);
           return ec2InstanceId;
         }
       } catch (error) {
         core.error('AWS EC2 instance starting error');
-        if (retryCount === maxRetries) {
+        if (retryCount >= maxRetries) {
           throw error;
         }
       }
