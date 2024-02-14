@@ -21,7 +21,9 @@ async function start(config: ConfigInterface): Promise<void> {
   const label = config.githubActionRunnerLabel;
   setOutput(label, ec2InstanceId);
   await aws.waitForInstanceRunning(ec2InstanceId);
-  await gh.waitForRunnerRegistered(label);
+  if (!await gh.waitForRunnerRegistered(label)){
+    core.setFailed('Runner did not register');
+  }
 }
 
 async function stop(config: ConfigInterface): Promise<void> {
