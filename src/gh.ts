@@ -104,7 +104,14 @@ export class GithubUtils {
     let waitSeconds: number = 0;
 
     core.info(`Waiting ${quietPeriodSeconds}s for the AWS EC2 instance to be registered in GitHub as a new self-hosted runner`);
-    await new Promise(resolve => setTimeout(resolve, quietPeriodSeconds * 1000));
+    try {
+      await new Promise(resolve => setTimeout(resolve, quietPeriodSeconds * 1000));
+    } catch (error) {
+      core.group("Github registration error details", async () => {
+        core.error(JSON.stringify(error));
+      });
+      return false;
+    }
     core.info(`Checking every ${retryIntervalSeconds}s to see if the GitHub self-hosted runner is registered`);
 
     return await new Promise((resolve, reject) => {
