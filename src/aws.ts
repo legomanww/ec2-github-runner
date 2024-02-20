@@ -66,31 +66,30 @@ export class AwsUtils {
         ];
       }
     } else if (this.config.ec2Os === 'linux') {
+      const ret : string[] = [
+        '#!/bin/bash',
+        'export RUNNER_ALLOW_RUNASROOT=1',
+        'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="x64" ;; esac && export RUNNER_ARCH=${ARCH}',
+      ];
+      // go to home dir
       if (this.config.githubRunnerHomeDir !== '') {
-        // If runner home directory is specified, we expect the actions-runner software (and dependencies)
-        // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
-        return [
-          '#!/bin/bash',
-          `cd "${this.config.githubRunnerHomeDir}"`,
-          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`,
-          'source pre-runner-script.sh',
-          'export RUNNER_ALLOW_RUNASROOT=1',
-          `./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel}`,
-          './run.sh',
-        ];
+        ret.push(`cd "${this.config.githubRunnerHomeDir}"`);
       } else {
-        return [
-          '#!/bin/bash',
-          'mkdir actions-runner && cd actions-runner',
-          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`,
-          'source pre-runner-script.sh',
-          `curl -o actions-runner-linux-x64-${runnerVersion}.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-x64-${runnerVersion}.tar.gz`,
-          `tar xzf ./actions-runner-linux-x64-${runnerVersion}.tar.gz`,
-          'export RUNNER_ALLOW_RUNASROOT=1',
-          `./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel}`,
-          './run.sh',
-        ];
+        ret.push('mkdir actions-runner && cd actions-runner');
       }
+
+      if (this.config.githubRunnerPreRunnerScript !== '') {
+        // add pre-runner script
+        ret.push(`echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`);
+        ret.push('source pre-runner-script.sh');
+      }
+      if (this.config.githubActionRunnerVersion !== 'none') {
+        ret.push(`curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-$ARCH-${runnerVersion}.tar.gz`);
+        ret.push(`tar xzf ./actions-runner.tar.gz`);
+      }
+      ret.push(`./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel}`);
+      ret.push('./run.sh');
+      return ret;
     } else {
       core.error('Not supported ec2-os.');
       return [];
