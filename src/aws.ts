@@ -2,6 +2,7 @@ import {
   BlockDeviceMapping,
   EC2Client,
   InstanceMarketOptionsRequest,
+  InstanceNetworkInterfaceSpecification,
   RunInstancesCommand,
   RunInstancesCommandInput,
   TerminateInstancesCommand,
@@ -140,6 +141,20 @@ export class AwsUtils {
     return this.config.awsKeyPairName;
   }
 
+  buildNetworkConfig() : InstanceNetworkInterfaceSpecification[] | undefined {
+    if (this.config.ec2AssociatePublicIp === undefined) {
+      return undefined;
+    }
+
+    return [
+      {
+        DeviceIndex: 0,
+        AssociatePublicIpAddress: this.config.ec2AssociatePublicIp,
+        SubnetId: this.config.ec2SubnetId,
+      },
+    ];
+  }
+
   async startEc2Instance(githubRegistrationToken: string): Promise<string | undefined> {
     const client = new EC2Client();
 
@@ -158,6 +173,7 @@ export class AwsUtils {
       InstanceMarketOptions: this.buildMarketOptions(),
       BlockDeviceMappings: this.buildBlockMappings(),
       SubnetId: this.config.ec2SubnetId,
+      NetworkInterfaces: this.buildNetworkConfig(),
     };
 
     const maxRetries = this.config.ec2MaxRetries;

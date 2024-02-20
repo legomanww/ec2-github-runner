@@ -30,6 +30,7 @@ export interface ConfigInterface {
   ec2StorageType: VolumeType | undefined;
   ec2StorageThroughput: number | undefined;
   ec2StorageDeviceName: string | undefined;
+  ec2AssociatePublicIp: boolean | undefined;
 }
 
 export class Config implements ConfigInterface {
@@ -60,6 +61,7 @@ export class Config implements ConfigInterface {
   ec2StorageType: VolumeType | undefined;
   ec2StorageThroughput: number | undefined;
   ec2StorageDeviceName: string | undefined;
+  ec2AssociatePublicIp: boolean | undefined;
 
   constructor() {
     this.actionMode = core.getInput('mode');
@@ -86,6 +88,7 @@ export class Config implements ConfigInterface {
     this.ec2StorageType = this.getTypeOrUndefined<VolumeType>('volume-type');
     this.ec2StorageThroughput = this.getIntOrUndefined('volume-throughput');
     this.ec2StorageDeviceName = this.getStringOrUndefined('volume-device-name');
+    this.ec2AssociatePublicIp = this.getBooleanOrUndefined('associate-public-ip');
 
     this.awsIamRoleName = this.getStringOrUndefined('iam-role-name');
     this.awsKeyPairName = this.getStringOrUndefined('aws-key-pair-name');
@@ -144,6 +147,14 @@ export class Config implements ConfigInterface {
       return undefined;
     }
     return val;
+  }
+
+  getBooleanOrUndefined(name: string) : boolean | undefined {
+    const val = core.getInput(name);
+    if (val === '') {
+      return undefined;
+    }
+    return core.getBooleanInput(name);
   }
 
   getTypeOrUndefined<T>(name: string) : T | undefined {

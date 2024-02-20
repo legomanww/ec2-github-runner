@@ -119,6 +119,11 @@ inputs:
       The parameter `volume-size` must also be configured when using this parameter.
       This parameter must be configured when using the `volume-size` parameter.
     required: false
+  associate-public-ip:
+    description: >-
+      Specifies whether to assign a public IPv4 address to an Instance.
+      The default value is 'true'
+    required: false
 
 outputs:
   label:
