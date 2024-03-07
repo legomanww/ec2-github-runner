@@ -15,6 +15,11 @@ inputs:
     description: >-
       GitHub Personal Access Token with the 'repo' scope assigned.
     required: true
+  runner-version:
+    description: >-
+      Version of the Runner software to use. Defaults to 'latest'
+    required: false
+    default: latest
   ec2-image-id:
     description: >-
       EC2 Image Id (AMI). The new runner will be launched from this image.
@@ -32,10 +37,14 @@ inputs:
          - 'linux'
      required: false
      default: linux
-  subnet-id-list:
+  max-retries:
     description: >-
-      VPC Subnet Id list. The subnets should belong to the same VPC as the specified security group.
-      Those will be used in order, in case one fails to spawn ec2 because of unavailable capacity in AZ.
+      Maximum number of attempts for starting
+    required: false
+    default: '1'
+  subnet-id:
+    description: >-
+      VPC Subnet Id. The subnet should belong to the same VPC as the specified security group.
       This input is required if you use the 'start' mode.
     required: false
   security-group-id:
@@ -85,6 +94,35 @@ inputs:
     description: >-
       Specifies the market (purchasing) option for the instance:
         - 'spot' - Use a spot instance
+    required: false
+  volume-size:
+    description: >-
+      Specifies the size of the volume in GiB
+    required: false
+  volume-type:
+    description: >-
+      Specifies the type of volume to create
+    required: false
+  volume-throughput:
+    description: >-
+      Specifies the throughput the volume will support, in MiB/s
+    required: false
+  volume-iops:
+    description: >-
+      Specifies the IOPS for the volume
+    required: false
+  volume-device-name:
+    description: >-
+      EC2 Block Storage Volume Device Name.
+      For example, /dev/sdh or xvdh.
+      Used for configuring the mount path of the volume if you're overriding the default volume size of the EC2 instance.
+      The parameter `volume-size` must also be configured when using this parameter.
+      This parameter must be configured when using the `volume-size` parameter.
+    required: false
+  associate-public-ip:
+    description: >-
+      Specifies whether to assign a public IPv4 address to an Instance.
+      The default value is 'true'
     required: false
 
 outputs:
