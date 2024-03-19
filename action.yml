@@ -17,7 +17,7 @@ inputs:
     required: true
   runner-version:
     description: >-
-      Version of the Runner software to use. Defaults to 'latest'
+      Version of the Runner software to use. Defaults to 'latest'. Use 'none' to skip install
     required: false
     default: latest
   ec2-image-id:
@@ -80,7 +80,7 @@ inputs:
     default: '[]'
   runner-home-dir:
     description: >-
-      Directory that contains actions-runner software and scripts. E.g. /home/runner/actions-runner.
+      Directory to install actions-runner or directory that contains actions-runner software and scripts. E.g. /home/runner/actions-runner.
     required: false
   aws-key-pair-name:
     description: >-

@@ -28,72 +28,94 @@ export class AwsUtils {
     const runnerVersion = await this.gh.getRunnerVersion();
 
     if (this.config.ec2Os === 'windows') {
-      // Name the instance the same as the label to avoid machine name conflicts in GitHub.
-      if (this.config.githubRunnerHomeDir !== '') {
-        // If runner home directory is specified, we expect the actions-runner software (and dependencies)
-        // to be pre-installed in the AMI, so we simply cd into that directory and then start the runner
-        return [
-          '<powershell>',
-          'winrm quickconfig -q',
-          `winrm set winrm/config/service/Auth '@{Basic="true"}'`,
-          `winrm set winrm/config/service '@{AllowUnencrypted="true"}'`,
-          `winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="0"}'`,
-
-          `cd "${this.config.githubRunnerHomeDir}"`,
-          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.ps1`,
-          '& pre-runner-script.ps1',
-          `./config.cmd --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
-          './run.cmd',
-          '</powershell>',
-          '<persist>false</persist>',
-        ];
-      } else {
-        return [
-          '<powershell>',
-          'winrm quickconfig -q',
-          `winrm set winrm/config/service/Auth '@{Basic="true"}'`,
-          `winrm set winrm/config/service '@{AllowUnencrypted="true"}'`,
-          `winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="0"}'`,
-
-          'mkdir actions-runner; cd actions-runner',
-          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.ps1`,
-          '& pre-runner-script.ps1',
-          `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-win-x64-${runnerVersion}.zip -OutFile actions-runner-win-x64-${runnerVersion}.zip`,
-          `Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-${runnerVersion}.zip", "$PWD")`,
-          `./config.cmd --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
-          './run.cmd',
-          '</powershell>',
-          '<persist>false</persist>',
-        ];
-      }
-    } else if (this.config.ec2Os === 'linux') {
       const ret : string[] = [
-        '#!/bin/bash',
-        'export RUNNER_ALLOW_RUNASROOT=1',
-        'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="x64" ;; esac && export RUNNER_ARCH=${ARCH}',
+        '<powershell>',
+        'winrm quickconfig -q',
+        `winrm set winrm/config/service/Auth '@{Basic="true"}'`,
+        `winrm set winrm/config/service '@{AllowUnencrypted="true"}'`,
+        `winrm set winrm/config/winrs '@{MaxMemoryPerShellMB="0"}'`,
       ];
+
       // go to home dir
       if (this.config.githubRunnerHomeDir !== '') {
-        ret.push(`cd "${this.config.githubRunnerHomeDir}"`);
+        ret.push(`mkdir ${this.config.githubRunnerHomeDir}; cd "${this.config.githubRunnerHomeDir}"`);
       } else {
-        ret.push('mkdir actions-runner && cd actions-runner');
+        ret.push('mkdir c:\\a; cd c:\\a');
       }
 
       if (this.config.githubRunnerPreRunnerScript !== '') {
         // add pre-runner script
-        ret.push(`echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`);
-        ret.push('source pre-runner-script.sh');
+        ret.push(
+          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.ps1`,
+          '& pre-runner-script.ps1',
+        );
       }
+
       if (this.config.githubActionRunnerVersion !== 'none') {
-        ret.push(`curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-$ARCH-${runnerVersion}.tar.gz`);
-        ret.push(`tar xzf ./actions-runner.tar.gz`);
+        // install actions-runner software
+        ret.push(
+          `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-win-x64-${runnerVersion}.zip -OutFile actions-runner-win-x64-${runnerVersion}.zip`,
+          `Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-${runnerVersion}.zip", "$PWD")`,
+        );
       }
-      ret.push(`./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel}`);
-      ret.push('./run.sh');
+
+      // start actions-runner software
+      ret.push(
+        // Name the instance the same as the label to avoid machine name conflicts in GitHub.
+        `./config.cmd --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
+        './run.cmd',
+        '</powershell>',
+        '<persist>false</persist>',
+      );
+
       return ret;
-    } else {
-      core.error('Not supported ec2-os.');
-      return [];
+    } else if (this.config.ec2Os === 'linux') {
+        const ret : string[] = [
+          '#!/bin/bash',
+          'export RUNNER_ALLOW_RUNASROOT=1',
+          'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="x64" ;; esac && export RUNNER_ARCH=${ARCH}',
+        ];
+
+        // go to home dir
+        if (this.config.githubRunnerHomeDir !== '') {
+          ret.push(
+            `mkdir -p "${this.config.githubRunnerHomeDir}"`,
+            `cd "${this.config.githubRunnerHomeDir}"`,
+          );
+        } else {
+          ret.push(
+            'mkdir -p /a',
+            'cd /a',
+          );
+        }
+
+        if (this.config.githubRunnerPreRunnerScript !== '') {
+          // add pre-runner script
+          ret.push(
+            `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`,
+            'source pre-runner-script.sh',
+          );
+        }
+
+        if (this.config.githubActionRunnerVersion !== 'none') {
+          // install actions-runner software
+          ret.push(
+            `curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-$ARCH-${runnerVersion}.tar.gz`,
+            `tar xzf ./actions-runner.tar.gz`,
+          );
+        }
+
+        // start actions-runner software
+        ret.push(
+          `./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
+          './run.sh',
+        );
+
+        return ret;
+    }
+    else {
+        core.error(`Unsupported ec2-os: ${this.config.ec2Os}`);
+        return [];
     }
   }
 
