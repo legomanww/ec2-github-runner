@@ -24,7 +24,7 @@ export interface ConfigInterface {
   ec2InstanceTags: TagSpecification[] | undefined;
   ec2SecurityGroupId: string;
   ec2SubnetId: string;
-  ec2MarketType: string | undefined;
+  ec2UseSpot: boolean | undefined;
   ec2StorageSize: number | undefined;
   ec2StorageIops: number | undefined;
   ec2StorageType: VolumeType | undefined;
@@ -55,7 +55,7 @@ export class Config implements ConfigInterface {
   ec2SubnetId: string;
   ec2InstanceType: _InstanceType;
   ec2InstanceTags: TagSpecification[] | undefined;
-  ec2MarketType: string | undefined;
+  ec2UseSpot: boolean | undefined;
   ec2StorageSize: number | undefined;
   ec2StorageIops: number | undefined;
   ec2StorageType: VolumeType | undefined;
@@ -82,7 +82,7 @@ export class Config implements ConfigInterface {
     this.ec2AmiId = core.getInput('ec2-image-id');
     this.ec2SecurityGroupId = core.getInput('security-group-id');
     this.ec2SubnetId = core.getInput('subnet-id');
-    this.ec2MarketType = this.getStringOrUndefined('market-type');
+    this.ec2UseSpot = this.getBooleanOrUndefined('spot');
     this.ec2StorageSize = this.getFloatOrUndefined('volume-size');
     this.ec2StorageIops = this.getIntOrUndefined('volume-iops');
     this.ec2StorageType = this.getTypeOrUndefined<VolumeType>('volume-type');
@@ -118,15 +118,11 @@ export class Config implements ConfigInterface {
       if (this.ec2AmiId === '' || instanceType === undefined || this.ec2Os === '' || this.ec2SubnetId === '' || this.ec2SecurityGroupId === '') {
         throw new Error(`Not all the required inputs are provided for the 'start' mode`);
       }
-      if (this.ec2StorageSize !== undefined && (this.ec2StorageDeviceName === undefined))
-      {
+      if (this.ec2StorageSize !== undefined && (this.ec2StorageDeviceName === undefined)) {
         throw new Error('Must specify a volume device name if a size is specified');
       }
       if (this.ec2Os !== 'windows' && this.ec2Os !== 'linux') {
         throw new Error(`Wrong ec2-os. Allowed values: 'windows' or 'linux'.`);
-      }
-      if (this.ec2MarketType && this.ec2MarketType !== 'spot') {
-        throw new Error(`Invalid 'market-type' input. Allowed values: spot.`);
       }
     } else if (this.actionMode === 'stop') {
       if (this.githubActionRunnerLabel === '' || this.ec2InstanceId === '') {
@@ -141,7 +137,7 @@ export class Config implements ConfigInterface {
     return Math.random().toString(36).substring(2, 7);
   }
 
-  getStringOrUndefined(name: string) : string | undefined {
+  getStringOrUndefined(name: string): string | undefined {
     const val = core.getInput(name);
     if (val === '') {
       return undefined;
@@ -149,7 +145,7 @@ export class Config implements ConfigInterface {
     return val;
   }
 
-  getBooleanOrUndefined(name: string) : boolean | undefined {
+  getBooleanOrUndefined(name: string): boolean | undefined {
     const val = core.getInput(name);
     if (val === '') {
       return undefined;
@@ -157,7 +153,7 @@ export class Config implements ConfigInterface {
     return core.getBooleanInput(name);
   }
 
-  getTypeOrUndefined<T>(name: string) : T | undefined {
+  getTypeOrUndefined<T>(name: string): T | undefined {
     const val = core.getInput(name);
     if (val === '') {
       return undefined;
@@ -165,29 +161,27 @@ export class Config implements ConfigInterface {
     return val as T;
   }
 
-  getIntOrUndefined(name: string) : number | undefined {
+  getIntOrUndefined(name: string): number | undefined {
     const val = core.getInput(name);
     if (val === '') {
       return undefined;
     }
     try {
       return Number.parseInt(val);
-    }
-    catch {
+    } catch {
       core.warning(`Could not convert ${name}'s provided value of ${val} to an integer.`);
       return undefined;
     }
   }
 
-  getFloatOrUndefined(name: string) : number | undefined {
+  getFloatOrUndefined(name: string): number | undefined {
     const val = core.getInput(name);
     if (val === '') {
       return undefined;
     }
     try {
       return Number.parseFloat(val);
-    }
-    catch {
+    } catch {
       core.warning(`Could not convert ${name}'s provided value of ${val} to a floating point number.`);
       return undefined;
     }

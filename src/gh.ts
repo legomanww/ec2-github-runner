@@ -29,7 +29,7 @@ export class GithubUtils {
 
     const httpClient = new HttpClient('http-client');
     const res: HttpClientResponse = await httpClient.get(
-      'https://api.github.com/repos/actions/runner/releases/latest'
+      'https://api.github.com/repos/actions/runner/releases/latest',
     );
 
     const body: string = await res.readBody();
@@ -53,6 +53,7 @@ export class GithubUtils {
         .map(r => new Runner(r.id, r.name, r.status));
       return foundRunners.length > 0 ? foundRunners[0] : undefined;
     } catch (error) {
+      core.info(`Error while attempting to find the runner: ${JSON.stringify(error)}`);
       return undefined;
     }
   }
@@ -98,16 +99,16 @@ export class GithubUtils {
   }
 
   async waitForRunnerRegistered(label: string): Promise<boolean> {
-    const timeoutMinutes: number = 5;
-    const retryIntervalSeconds: number = 10;
-    const quietPeriodSeconds: number = 30;
-    let waitSeconds: number = 0;
+    const timeoutMinutes = 5;
+    const retryIntervalSeconds = 10;
+    const quietPeriodSeconds = 30;
+    let waitSeconds = 0;
 
     core.info(`Waiting ${quietPeriodSeconds}s for the AWS EC2 instance to be registered in GitHub as a new self-hosted runner`);
     try {
       await new Promise(resolve => setTimeout(resolve, quietPeriodSeconds * 1000));
     } catch (error) {
-      core.group("Github registration error details", async () => {
+      core.group('Github registration error details', async () => {
         core.error(JSON.stringify(error));
       });
       return false;

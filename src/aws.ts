@@ -28,7 +28,7 @@ export class AwsUtils {
     const runnerVersion = await this.gh.getRunnerVersion();
 
     if (this.config.ec2Os === 'windows') {
-      const ret : string[] = [
+      const ret: string[] = [
         '<powershell>',
         'winrm quickconfig -q',
         `winrm set winrm/config/service/Auth '@{Basic="true"}'`,
@@ -70,59 +70,58 @@ export class AwsUtils {
 
       return ret;
     } else if (this.config.ec2Os === 'linux') {
-        const ret : string[] = [
-          '#!/bin/bash',
-          'export RUNNER_ALLOW_RUNASROOT=1',
-          'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="x64" ;; esac && export RUNNER_ARCH=${ARCH}',
-        ];
+      const ret: string[] = [
+        '#!/bin/bash',
+        'export RUNNER_ALLOW_RUNASROOT=1',
+        'case $(uname -m) in aarch64) ARCH="arm64" ;; amd64|x86_64) ARCH="x64" ;; esac && export RUNNER_ARCH=${ARCH}',
+      ];
 
-        // go to home dir
-        if (this.config.githubRunnerHomeDir !== '') {
-          ret.push(
-            `mkdir -p "${this.config.githubRunnerHomeDir}"`,
-            `cd "${this.config.githubRunnerHomeDir}"`,
-          );
-        } else {
-          ret.push(
-            'mkdir -p /a',
-            'cd /a',
-          );
-        }
-
-        if (this.config.githubRunnerPreRunnerScript !== '') {
-          // add pre-runner script
-          ret.push(
-            `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`,
-            'source pre-runner-script.sh',
-          );
-        }
-
-        if (this.config.githubActionRunnerVersion !== 'none') {
-          // install actions-runner software
-          ret.push(
-            `curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-$ARCH-${runnerVersion}.tar.gz`,
-            `tar xzf ./actions-runner.tar.gz`,
-          );
-        }
-
-        // start actions-runner software
+      // go to home dir
+      if (this.config.githubRunnerHomeDir !== '') {
         ret.push(
-          `./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
-          './run.sh',
+          `mkdir -p "${this.config.githubRunnerHomeDir}"`,
+          `cd "${this.config.githubRunnerHomeDir}"`,
         );
+      } else {
+        ret.push(
+          'mkdir -p /a',
+          'cd /a',
+        );
+      }
 
-        return ret;
-    }
-    else {
-        core.error(`Unsupported ec2-os: ${this.config.ec2Os}`);
-        return [];
+      if (this.config.githubRunnerPreRunnerScript !== '') {
+        // add pre-runner script
+        ret.push(
+          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`,
+          'source pre-runner-script.sh',
+        );
+      }
+
+      if (this.config.githubActionRunnerVersion !== 'none') {
+        // install actions-runner software
+        ret.push(
+          `curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-$ARCH-${runnerVersion}.tar.gz`,
+          `tar xzf ./actions-runner.tar.gz`,
+        );
+      }
+
+      // start actions-runner software
+      ret.push(
+        `./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
+        './run.sh',
+      );
+
+      return ret;
+    } else {
+      core.error(`Unsupported ec2-os: ${this.config.ec2Os}`);
+      return [];
     }
   }
 
   buildMarketOptions(): InstanceMarketOptionsRequest | undefined {
-    if (this.config.ec2MarketType === 'spot') {
+    if (this.config.ec2UseSpot) {
       return {
-        MarketType: this.config.ec2MarketType,
+        MarketType: 'spot',
         SpotOptions: {
           SpotInstanceType: 'one-time',
         },
@@ -133,10 +132,10 @@ export class AwsUtils {
   }
 
   buildBlockMappings(): BlockDeviceMapping[] | undefined {
-    if (this.config.ec2StorageSize === undefined &&
-      this.config.ec2StorageIops === undefined &&
-      this.config.ec2StorageType === undefined &&
-      this.config.ec2StorageThroughput === undefined) {
+    if (this.config.ec2StorageSize === undefined
+      && this.config.ec2StorageIops === undefined
+      && this.config.ec2StorageType === undefined
+      && this.config.ec2StorageThroughput === undefined) {
       return undefined;
     }
 
@@ -155,15 +154,15 @@ export class AwsUtils {
   }
 
   buildKeyConfig(): string | undefined {
-    if (this.config.awsKeyPairName === undefined ||
-      this.config.awsKeyPairName === '') {
+    if (this.config.awsKeyPairName === undefined
+      || this.config.awsKeyPairName === '') {
       return undefined;
     }
 
     return this.config.awsKeyPairName;
   }
 
-  buildNetworkConfig() : InstanceNetworkInterfaceSpecification[] | undefined {
+  buildNetworkConfig(): InstanceNetworkInterfaceSpecification[] | undefined {
     if (this.config.ec2AssociatePublicIp === undefined) {
       return undefined;
     }
@@ -201,13 +200,13 @@ export class AwsUtils {
     const maxRetries = this.config.ec2MaxRetries;
     let retryCount = 0;
 
-    core.group("AWS Run Instance params", async () => {
+    core.group('AWS Run Instance params', async () => {
       core.info(JSON.stringify(params, null, 2));
     });
 
     while (retryCount < maxRetries) {
       core.info(`Starting AWS EC2 instance... (Attempt ${retryCount}/${maxRetries})`);
-      
+
       try {
         const command = new RunInstancesCommand(params);
         const result = await client.send(command);
@@ -218,7 +217,7 @@ export class AwsUtils {
         }
       } catch (error) {
         core.error('AWS EC2 instance starting error');
-        core.group("AWS EC2 instance starting error details", async () => {
+        core.group('AWS EC2 instance starting error details', async () => {
           core.info(JSON.stringify(error));
         });
         retryCount++;

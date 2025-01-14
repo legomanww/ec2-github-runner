@@ -22,11 +22,11 @@ async function start(config: ConfigInterface): Promise<void> {
   setOutput(label, ec2InstanceId);
   await aws.waitForInstanceRunning(ec2InstanceId);
   try {
-    if (!await gh.waitForRunnerRegistered(label)){
+    if (!await gh.waitForRunnerRegistered(label)) {
       core.setFailed('Runner did not register');
     }
   } catch (error) {
-    core.setFailed('Error registering runner');
+    core.setFailed(`Error registering runner: ${JSON.stringify(error)}`);
   }
 }
 
@@ -38,14 +38,10 @@ async function stop(config: ConfigInterface): Promise<void> {
   await gh.removeRunner();
 }
 
-export async function run() {
+export async function runStart() {
   try {
     const config: ConfigInterface = new Config();
-    if (config.actionMode === 'start') {
-      await start(config);
-    } else {
-      await stop(config);
-    }
+    await start(config);
   } catch (error) {
     if (error instanceof Error) {
       core.error(error);
@@ -55,4 +51,15 @@ export async function run() {
   }
 }
 
-run();
+export async function runStop() {
+  try {
+    const config: ConfigInterface = new Config();
+    await stop(config);
+  } catch (error) {
+    if (error instanceof Error) {
+      core.error(error);
+      core.setFailed(error.message);
+    }
+    core.error('Unrecoverable error occurred');
+  }
+}
