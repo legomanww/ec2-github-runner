@@ -9,23 +9,21 @@ import {
   waitUntilInstanceRunning,
 } from '@aws-sdk/client-ec2';
 import * as core from '@actions/core';
-import { ConfigInterface } from './config';
+import { StartConfig } from './config';
 import { GithubUtils } from './gh';
 
 export class AwsUtils {
-  config: ConfigInterface;
-  gh: GithubUtils;
+  config: StartConfig;
 
-  constructor(config: ConfigInterface) {
+  constructor(config: StartConfig) {
     this.config = config;
-    this.gh = new GithubUtils(config);
   }
 
   // User data scripts are run as the root user
-  async buildUserDataScript(githubRegistrationToken: string): Promise<string[]> {
+  async buildUserDataScript(githubRegistrationToken: string, githubToken: string): Promise<string[]> {
     core.info(`Building data script for ${this.config.ec2Os}`);
-
-    const runnerVersion = await this.gh.getRunnerVersion();
+    const gh: GithubUtils = new GithubUtils(githubToken);
+    const runnerVersion = await gh.getRunnerVersion(this.config);
 
     if (this.config.ec2Os === 'windows') {
       const ret: string[] = [
@@ -176,10 +174,10 @@ export class AwsUtils {
     ];
   }
 
-  async startEc2Instance(githubRegistrationToken: string): Promise<string | undefined> {
+  async startEc2Instance(githubRegistrationToken: string, githubToken: string): Promise<string | undefined> {
     const client = new EC2Client();
 
-    const userData = await this.buildUserDataScript(githubRegistrationToken);
+    const userData = await this.buildUserDataScript(githubRegistrationToken, githubToken);
 
     const params: RunInstancesCommandInput = {
       ImageId: this.config.ec2AmiId,
@@ -230,25 +228,25 @@ export class AwsUtils {
     }
   }
 
-  async terminateEc2Instance(): Promise<void> {
+  static async terminateEc2Instance(ec2InstanceId: string): Promise<void> {
     const client = new EC2Client();
 
     const params = {
-      InstanceIds: [this.config.ec2InstanceId],
+      InstanceIds: [ec2InstanceId],
     };
 
     const command = new TerminateInstancesCommand(params);
 
     try {
       await client.send(command);
-      core.info(`AWS EC2 instance ${this.config.ec2InstanceId} has terminated`);
+      core.info(`AWS EC2 instance ${ec2InstanceId} has terminated`);
     } catch (error) {
-      core.error(`AWS EC2 instance ${this.config.ec2InstanceId} termination error`);
+      core.error(`AWS EC2 instance ${ec2InstanceId} termination error`);
       throw error;
     }
   }
 
-  async waitForInstanceRunning(ec2InstanceId: string): Promise<void> {
+  static async waitForInstanceRunning(ec2InstanceId: string): Promise<void> {
     const client = new EC2Client();
 
     const params = {

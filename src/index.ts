@@ -1,65 +1,64 @@
 import { GithubUtils } from './gh';
-import { Config, ConfigInterface } from './config';
-import * as core from '@actions/core';
+import { StartConfig, StopConfig } from './config';
+import { setOutput, setFailed, error as logError } from '@actions/core';
 import { AwsUtils } from './aws';
 
-function setOutput(label: string, ec2InstanceId: string): void {
-  core.setOutput('label', label);
-  core.setOutput('ec2-instance-id', ec2InstanceId);
+function setOutputs(label: string, ec2InstanceId: string): void {
+  setOutput('label', label);
+  setOutput('ec2-instance-id', ec2InstanceId);
 }
 
-async function start(config: ConfigInterface): Promise<void> {
-  const gh = new GithubUtils(config);
+async function start(config: StartConfig): Promise<void> {
+  const gh = new GithubUtils(config.githubToken);
   const aws = new AwsUtils(config);
 
   const githubRegistrationToken = await gh.getRegistrationToken();
-  const ec2InstanceId = await aws.startEc2Instance(githubRegistrationToken);
+  const ec2InstanceId = await aws.startEc2Instance(githubRegistrationToken, config.githubToken);
   if (ec2InstanceId === undefined || ec2InstanceId === '') {
-    core.setFailed('Could not get EC2 Instance ID');
+    setFailed('Could not get EC2 Instance ID');
     return;
   }
   const label = config.githubActionRunnerLabel;
-  setOutput(label, ec2InstanceId);
-  await aws.waitForInstanceRunning(ec2InstanceId);
+  setOutputs(label, ec2InstanceId);
+  await AwsUtils.waitForInstanceRunning(ec2InstanceId);
   try {
     if (!await gh.waitForRunnerRegistered(label)) {
-      core.setFailed('Runner did not register');
+      setFailed('Runner did not register');
     }
   } catch (error) {
-    core.setFailed(`Error registering runner: ${JSON.stringify(error)}`);
+    setFailed(`Error registering runner: ${JSON.stringify(error)}`);
   }
 }
 
-async function stop(config: ConfigInterface): Promise<void> {
-  const gh = new GithubUtils(config);
-  const aws = new AwsUtils(config);
+async function stop(config: StopConfig): Promise<void> {
+  const gh = new GithubUtils(config.githubToken);
 
-  await aws.terminateEc2Instance();
-  await gh.removeRunner();
+  await AwsUtils.terminateEc2Instance(config.githubToken);
+  await gh.removeRunner(config.githubActionRunnerLabel);
 }
 
 export async function runStart() {
   try {
-    const config: ConfigInterface = new Config();
+    const config: StartConfig = new StartConfig();
     await start(config);
   } catch (error) {
     if (error instanceof Error) {
-      core.error(error);
-      core.setFailed(error.message);
+      logError(error);
+      setFailed(error.message);
     }
-    core.error('Unknown error occurred');
+    logError('Unrecoverable error occurred');
   }
 }
 
 export async function runStop() {
   try {
-    const config: ConfigInterface = new Config();
+    const config: StopConfig = new StopConfig();
     await stop(config);
   } catch (error) {
     if (error instanceof Error) {
-      core.error(error);
-      core.setFailed(error.message);
+      logError(error);
+      setFailed(error.message);
     }
-    core.error('Unrecoverable error occurred');
+    logError('Unrecoverable error occurred');
   }
 }

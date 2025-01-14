@@ -1,6 +1,7 @@
-import * as core from '@actions/core';
-import * as github from '@actions/github';
-import { ConfigInterface } from './config';
+import { error as logError, info as logInfo, group as logGroup } from '@actions/core';
+import { getOctokit, context } from '@actions/github';
+import { GitHub } from '@actions/github/lib/utils';
+import { StartConfig } from './config';
 import { HttpClient, HttpClientResponse } from '@actions/http-client';
 
 class Runner {
@@ -16,15 +17,15 @@ class Runner {
 }
 
 export class GithubUtils {
-  config: ConfigInterface;
+  octokit: InstanceType<typeof GitHub>;
 
-  constructor(config: ConfigInterface) {
-    this.config = config;
+  constructor(githubToken: string) {
+    this.octokit = getOctokit(githubToken);
   }
 
-  async getRunnerVersion(): Promise<string> {
-    if (this.config.githubActionRunnerVersion !== 'latest') {
-      return this.config.githubActionRunnerVersion.replace('v', '');
+  async getRunnerVersion(config: StartConfig): Promise<string> {
+    if (config.githubActionRunnerVersion !== 'latest') {
+      return config.githubActionRunnerVersion.replace('v', '');
     }
 
     const httpClient = new HttpClient('http-client');
@@ -40,12 +41,10 @@ export class GithubUtils {
   // use the unique label to find the runner
   // as we don't have the runner's id, it's not possible to get it in any other way
   async getRunner(label: string): Promise<Runner | undefined> {
-    const octokit = github.getOctokit(this.config.githubToken);
-
     try {
-      const runners = await octokit.rest.actions.listSelfHostedRunnersForRepo({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+      const runners = await this.octokit.rest.actions.listSelfHostedRunnersForRepo({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
       });
       const foundRunners = runners.data.runners
         .filter(r => r.labels
@@ -53,47 +52,44 @@ export class GithubUtils {
         .map(r => new Runner(r.id, r.name, r.status));
       return foundRunners.length > 0 ? foundRunners[0] : undefined;
     } catch (error) {
-      core.info(`Error while attempting to find the runner: ${JSON.stringify(error)}`);
+      logInfo(`Error while attempting to find the runner: ${JSON.stringify(error)}`);
       return undefined;
     }
   }
 
   // get GitHub Registration Token for registering a self-hosted runner
   async getRegistrationToken(): Promise<string> {
-    const octokit = github.getOctokit(this.config.githubToken);
-
     try {
-      const response = await octokit.rest.actions.createRegistrationTokenForRepo({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+      const response = await this.octokit.rest.actions.createRegistrationTokenForRepo({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
       });
-      core.info('GitHub Registration Token received');
+      logInfo('GitHub Registration Token received');
       return response.data.token;
     } catch (error) {
-      core.error('Error receiving GitHub Registration Token');
+      logError('Error receiving GitHub Registration Token');
       throw error;
     }
   }
 
-  async removeRunner(): Promise<void> {
-    const runner = await this.getRunner(this.config.githubActionRunnerLabel);
-    const octokit = github.getOctokit(this.config.githubToken);
+  async removeRunner(githubActionRunnerLabel: string): Promise<void> {
+    const runner = await this.getRunner(githubActionRunnerLabel);
 
     // skip the runner removal process if the runner is not found
     if (runner === undefined) {
-      core.info(`GitHub self-hosted runner with label ${this.config.githubActionRunnerLabel} was not found, so the removal was skipped`);
+      logInfo(`GitHub self-hosted runner with label ${githubActionRunnerLabel} was not found, so the removal was skipped`);
       return;
     }
 
     try {
-      await octokit.rest.actions.deleteSelfHostedRunnerFromRepo({
-        owner: github.context.repo.owner,
-        repo: github.context.repo.repo,
+      await this.octokit.rest.actions.deleteSelfHostedRunnerFromRepo({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
         runner_id: runner.id,
       });
-      core.info(`GitHub self-hosted runner ${runner.name} removed`);
+      logInfo(`GitHub self-hosted runner ${runner.name} removed`);
     } catch (error) {
-      core.error('Error removing GitHub self-hosted runner');
+      logError('Error removing GitHub self-hosted runner');
       throw error;
     }
   }
@@ -104,35 +100,35 @@ export class GithubUtils {
     const quietPeriodSeconds = 30;
     let waitSeconds = 0;
 
-    core.info(`Waiting ${quietPeriodSeconds}s for the AWS EC2 instance to be registered in GitHub as a new self-hosted runner`);
+    logInfo(`Waiting ${quietPeriodSeconds}s for the AWS EC2 instance to be registered in GitHub as a new self-hosted runner`);
     try {
       await new Promise(resolve => setTimeout(resolve, quietPeriodSeconds * 1000));
     } catch (error) {
-      core.group('Github registration error details', async () => {
-        core.error(JSON.stringify(error));
+      logGroup('Github registration error details', async () => {
+        logError(JSON.stringify(error));
       });
       return false;
     }
-    core.info(`Checking every ${retryIntervalSeconds}s to see if the GitHub self-hosted runner is registered`);
+    logInfo(`Checking every ${retryIntervalSeconds}s to see if the GitHub self-hosted runner is registered`);
 
     return await new Promise((resolve, reject) => {
       const interval = setInterval(async () => {
         const runner = await this.getRunner(label);
 
         if (waitSeconds > timeoutMinutes * 60) {
-          core.error('GitHub self-hosted runner registration error');
+          logError('GitHub self-hosted runner registration error');
           clearInterval(interval);
           reject(`A timeout of ${timeoutMinutes} minutes was exceeded. Your AWS EC2 instance was not able to register itself in GitHub as a new self-hosted runner.`);
           resolve(false);
         }
 
         if (runner !== undefined && runner.status === 'online') {
-          core.info(`GitHub self-hosted runner ${runner.name} is registered and ready to use`);
+          logInfo(`GitHub self-hosted runner ${runner.name} is registered and ready to use`);
           clearInterval(interval);
           resolve(true);
         } else {
           waitSeconds += retryIntervalSeconds;
-          core.info('Checking...');
+          logInfo('Checking...');
         }
       }, retryIntervalSeconds * 1000);
     });
