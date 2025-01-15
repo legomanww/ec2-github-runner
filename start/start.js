@@ -1,3 +1,3 @@
-import { runStart } from '../src';
+import { runStart } from '../dist/index.js';
 
 await runStart();

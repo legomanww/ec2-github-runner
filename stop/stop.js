@@ -1,3 +1,3 @@
-import { runStop } from '../src';
+import { runStop } from '../dist/index.js';
 
 await runStop();
