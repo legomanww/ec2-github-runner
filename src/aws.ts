@@ -187,7 +187,6 @@ export class AwsUtils {
       TagSpecifications: this.config.ec2.instanceTags,
       InstanceMarketOptions: this.buildMarketOptions(),
       BlockDeviceMappings: this.buildBlockMappings(),
-      SubnetId: this.config.ec2.subnetId,
       NetworkInterfaces: this.buildNetworkConfig(),
     };
 
