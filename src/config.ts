@@ -92,7 +92,7 @@ export class StartConfig extends Config {
     storageType: VolumeType | undefined;
     storageThroughput: number | undefined;
     storageDeviceName: string | undefined;
-    associatePublicIp: boolean | undefined;
+    associatePublicIp: boolean;
   };
 
   aws: {
@@ -129,7 +129,7 @@ export class StartConfig extends Config {
       storageType: this.getTypeOrUndefined<VolumeType>('volume-type'),
       storageThroughput: this.getIntOrUndefined('volume-throughput'),
       storageDeviceName: this.getStringOrUndefined('volume-device-name'),
-      associatePublicIp: this.getBooleanOrUndefined('associate-public-ip'),
+      associatePublicIp: this.getBooleanOrUndefined('associate-public-ip') || true,
     };
 
     this.aws = {

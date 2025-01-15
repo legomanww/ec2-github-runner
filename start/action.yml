@@ -102,6 +102,7 @@ inputs:
       Specifies whether to assign a public IPv4 address to an Instance.
       The default value is 'true'
     required: false
+    default: 'true'
 
 outputs:
   label:

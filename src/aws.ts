@@ -161,10 +161,6 @@ export class AwsUtils {
   }
 
   buildNetworkConfig(): InstanceNetworkInterfaceSpecification[] | undefined {
-    if (this.config.ec2.associatePublicIp === undefined) {
-      return undefined;
-    }
-
     return [
       {
         DeviceIndex: 0,
