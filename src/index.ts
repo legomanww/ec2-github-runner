@@ -33,7 +33,7 @@ async function start(config: StartConfig): Promise<void> {
 async function stop(config: StopConfig): Promise<void> {
   const gh = new GithubUtils(config.githubToken);
 
-  await AwsUtils.terminateEc2Instance(config.githubToken);
+  await AwsUtils.terminateEc2Instance(config.ec2InstanceId);
   await gh.removeRunner(config.githubActionRunnerLabel);
 }
 
