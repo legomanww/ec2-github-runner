@@ -9,16 +9,16 @@ function setOutputs(label: string, ec2InstanceId: string): void {
 }
 
 async function start(config: StartConfig): Promise<void> {
-  const gh = new GithubUtils(config.githubToken);
+  const gh = new GithubUtils(config.github.token);
   const aws = new AwsUtils(config);
 
   const githubRegistrationToken = await gh.getRegistrationToken();
-  const ec2InstanceId = await aws.startEc2Instance(githubRegistrationToken, config.githubToken);
+  const ec2InstanceId = await aws.startEc2Instance(githubRegistrationToken, config.github.token);
   if (ec2InstanceId === undefined || ec2InstanceId === '') {
     setFailed('Could not get EC2 Instance ID');
     return;
   }
-  const label = config.githubActionRunnerLabel;
+  const label = config.github.actionRunnerLabel;
   setOutputs(label, ec2InstanceId);
   await AwsUtils.waitForInstanceRunning(ec2InstanceId);
   try {

@@ -2,15 +2,13 @@ import { getInput, getBooleanInput, warning as logWarning } from '@actions/core'
 import { context } from '@actions/github';
 import { TagSpecification, VolumeType, _InstanceType } from '@aws-sdk/client-ec2';
 
-export interface ConfigInterface {
-  githubToken: string;
-}
-
-class Config implements ConfigInterface {
-  githubToken: string;
+class Config {
+  github: {
+    token: string;
+  };
 
   constructor() {
-    this.githubToken = getInput('github-token');
+    this.github = { token: getInput('github-token') };
   }
 
   generateUniqueLabel(): string {
@@ -69,84 +67,89 @@ class Config implements ConfigInterface {
 }
 
 export class StartConfig extends Config {
-  awsIamRoleName: string | undefined;
-  awsKeyPairName: string | undefined;
+  github: {
+    token: string;
+    repo: string;
+    owner: string;
+    actionRunnerVersion: string;
+    actionRunnerLabel: string;
+    runnerHomeDir: string;
+    runnerPreRunnerScript: string;
+  };
 
-  githubToken: string;
-  githubRepo: string;
-  githubOwner: string;
-  githubActionRunnerVersion: string;
-  githubActionRunnerLabel: string;
-  githubRunnerHomeDir: string;
-  githubRunnerPreRunnerScript: string;
+  ec2: {
+    instanceId: string;
+    maxRetries: number;
+    os: string;
+    amiId: string;
+    securityGroupId: string;
+    subnetId: string;
+    instanceType: _InstanceType;
+    instanceTags: TagSpecification[] | undefined;
+    useSpot: boolean | undefined;
+    storageSize: number | undefined;
+    storageIops: number | undefined;
+    storageType: VolumeType | undefined;
+    storageThroughput: number | undefined;
+    storageDeviceName: string | undefined;
+    associatePublicIp: boolean | undefined;
+  };
 
-  ec2InstanceId: string;
-  ec2MaxRetries: number;
-  ec2Os: string;
-  ec2AmiId: string;
-  ec2SecurityGroupId: string;
-  ec2SubnetId: string;
-  ec2InstanceType: _InstanceType;
-  ec2InstanceTags: TagSpecification[] | undefined;
-  ec2UseSpot: boolean | undefined;
-  ec2StorageSize: number | undefined;
-  ec2StorageIops: number | undefined;
-  ec2StorageType: VolumeType | undefined;
-  ec2StorageThroughput: number | undefined;
-  ec2StorageDeviceName: string | undefined;
-  ec2AssociatePublicIp: boolean | undefined;
+  aws: {
+    iamRoleName: string | undefined;
+    keyPairName: string | undefined;
+  };
 
   constructor() {
     super();
-    this.githubToken = getInput('github-token');
-    this.githubRepo = context.repo.repo;
-    this.githubOwner = context.repo.owner;
-    this.githubActionRunnerVersion = getInput('runner-version');
-    this.githubActionRunnerLabel = this.getStringOrUndefined('label') || this.generateUniqueLabel();
-    this.githubRunnerHomeDir = getInput('runner-home-dir');
-    this.githubRunnerPreRunnerScript = getInput('pre-runner-script');
-
-    this.ec2InstanceId = getInput('ec2-instance-id');
-    this.ec2MaxRetries = this.getIntOrUndefined('max-retries') || 1;
-    const instanceType = this.getTypeOrUndefined<_InstanceType>('ec2-instance-type');
-    this.ec2InstanceType = instanceType || _InstanceType.t3_micro; // do this separately so it can be verified
-    this.ec2Os = getInput('ec2-os');
-    this.ec2AmiId = getInput('ec2-image-id');
-    this.ec2SecurityGroupId = getInput('security-group-id');
-    this.ec2SubnetId = getInput('subnet-id');
-    this.ec2UseSpot = this.getBooleanOrUndefined('spot');
-    this.ec2StorageSize = this.getFloatOrUndefined('volume-size');
-    this.ec2StorageIops = this.getIntOrUndefined('volume-iops');
-    this.ec2StorageType = this.getTypeOrUndefined<VolumeType>('volume-type');
-    this.ec2StorageThroughput = this.getIntOrUndefined('volume-throughput');
-    this.ec2StorageDeviceName = this.getStringOrUndefined('volume-device-name');
-    this.ec2AssociatePublicIp = this.getBooleanOrUndefined('associate-public-ip');
-
-    this.awsIamRoleName = this.getStringOrUndefined('iam-role-name');
-    this.awsKeyPairName = this.getStringOrUndefined('aws-key-pair-name');
+    this.github = {
+      token: getInput('github-token'),
+      repo: context.repo.repo,
+      owner: context.repo.owner,
+      actionRunnerVersion: getInput('runner-version'),
+      actionRunnerLabel: this.getStringOrUndefined('label') || this.generateUniqueLabel(),
+      runnerHomeDir: getInput('runner-home-dir'),
+      runnerPreRunnerScript: getInput('pre-runner-script'),
+    };
 
     const tags = JSON.parse(getInput('aws-resource-tags'));
-    this.ec2InstanceTags = undefined;
-    if (tags.length > 0) {
-      this.ec2InstanceTags = [
-        { ResourceType: 'instance', Tags: tags },
-        { ResourceType: 'volume', Tags: tags },
-      ];
-    }
+
+    this.ec2 = {
+      instanceId: getInput('ec2-instance-id'),
+      maxRetries: this.getIntOrUndefined('max-retries') || 1,
+      os: getInput('ec2-os'),
+      amiId: getInput('ec2-image-id'),
+      securityGroupId: getInput('security-group-id'),
+      subnetId: getInput('subnet-id'),
+      instanceType: this.getTypeOrUndefined<_InstanceType>('ec2-instance-type') || _InstanceType.t3_micro,
+      instanceTags: (tags.length > 0) ? [{ ResourceType: 'instance', Tags: tags }, { ResourceType: 'volume', Tags: tags }] : undefined,
+      useSpot: this.getBooleanOrUndefined('spot'),
+      storageSize: this.getFloatOrUndefined('volume-size'),
+      storageIops: this.getIntOrUndefined('volume-iops'),
+      storageType: this.getTypeOrUndefined<VolumeType>('volume-type'),
+      storageThroughput: this.getIntOrUndefined('volume-throughput'),
+      storageDeviceName: this.getStringOrUndefined('volume-device-name'),
+      associatePublicIp: this.getBooleanOrUndefined('associate-public-ip'),
+    };
+
+    this.aws = {
+      iamRoleName: this.getStringOrUndefined('iam-role-name'),
+      keyPairName: this.getStringOrUndefined('aws-key-pair-name'),
+    };
 
     //
     // validate input
     //
-    if (this.githubToken === '') {
+    if (this.github.token === '') {
       throw new Error(`The 'github-token' is required but was not specified`);
     }
-    if (this.ec2AmiId === '' || instanceType === undefined || this.ec2Os === '' || this.ec2SubnetId === '' || this.ec2SecurityGroupId === '') {
+    if (this.ec2.amiId === '' || this.ec2.instanceType === undefined || this.ec2.os === '' || this.ec2.subnetId === '' || this.ec2.securityGroupId === '') {
       throw new Error(`Not all the required inputs are provided for the 'start' mode`);
     }
-    if (this.ec2StorageSize !== undefined && (this.ec2StorageDeviceName === undefined)) {
+    if (this.ec2.storageSize !== undefined && (this.ec2.storageDeviceName === undefined)) {
       throw new Error('Must specify a volume device name if a size is specified');
     }
-    if (this.ec2Os !== 'windows' && this.ec2Os !== 'linux') {
+    if (this.ec2.os !== 'windows' && this.ec2.os !== 'linux') {
       throw new Error(`Invalid ec2-os. Allowed values: 'windows' or 'linux'.`);
     }
   }

@@ -24,8 +24,8 @@ export class GithubUtils {
   }
 
   async getRunnerVersion(config: StartConfig): Promise<string> {
-    if (config.githubActionRunnerVersion !== 'latest') {
-      return config.githubActionRunnerVersion.replace('v', '');
+    if (config.github.actionRunnerVersion !== 'latest') {
+      return config.github.actionRunnerVersion.replace('v', '');
     }
 
     const httpClient = new HttpClient('http-client');

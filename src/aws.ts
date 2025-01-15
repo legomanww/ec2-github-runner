@@ -21,11 +21,11 @@ export class AwsUtils {
 
   // User data scripts are run as the root user
   async buildUserDataScript(githubRegistrationToken: string, githubToken: string): Promise<string[]> {
-    core.info(`Building data script for ${this.config.ec2Os}`);
+    core.info(`Building data script for ${this.config.ec2.os}`);
     const gh: GithubUtils = new GithubUtils(githubToken);
     const runnerVersion = await gh.getRunnerVersion(this.config);
 
-    if (this.config.ec2Os === 'windows') {
+    if (this.config.ec2.os === 'windows') {
       const ret: string[] = [
         '<powershell>',
         'winrm quickconfig -q',
@@ -35,21 +35,21 @@ export class AwsUtils {
       ];
 
       // go to home dir
-      if (this.config.githubRunnerHomeDir !== '') {
-        ret.push(`mkdir ${this.config.githubRunnerHomeDir}; cd "${this.config.githubRunnerHomeDir}"`);
+      if (this.config.github.runnerHomeDir !== '') {
+        ret.push(`mkdir ${this.config.github.runnerHomeDir}; cd "${this.config.github.runnerHomeDir}"`);
       } else {
         ret.push('mkdir c:\\a; cd c:\\a');
       }
 
-      if (this.config.githubRunnerPreRunnerScript !== '') {
+      if (this.config.github.runnerPreRunnerScript !== '') {
         // add pre-runner script
         ret.push(
-          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.ps1`,
+          `echo "${this.config.github.runnerPreRunnerScript}" > pre-runner-script.ps1`,
           '& pre-runner-script.ps1',
         );
       }
 
-      if (this.config.githubActionRunnerVersion !== 'none') {
+      if (this.config.github.actionRunnerVersion !== 'none') {
         // install actions-runner software
         ret.push(
           `Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-win-x64-${runnerVersion}.zip -OutFile actions-runner-win-x64-${runnerVersion}.zip`,
@@ -60,14 +60,14 @@ export class AwsUtils {
       // start actions-runner software
       ret.push(
         // Name the instance the same as the label to avoid machine name conflicts in GitHub.
-        `./config.cmd --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
+        `./config.cmd --url https://github.com/${this.config.github.owner}/${this.config.github.repo} --token ${githubRegistrationToken} --labels ${this.config.github.actionRunnerLabel} --name ${this.config.github.actionRunnerLabel} --unattended`,
         './run.cmd',
         '</powershell>',
         '<persist>false</persist>',
       );
 
       return ret;
-    } else if (this.config.ec2Os === 'linux') {
+    } else if (this.config.ec2.os === 'linux') {
       const ret: string[] = [
         '#!/bin/bash',
         'export RUNNER_ALLOW_RUNASROOT=1',
@@ -75,10 +75,10 @@ export class AwsUtils {
       ];
 
       // go to home dir
-      if (this.config.githubRunnerHomeDir !== '') {
+      if (this.config.github.runnerHomeDir !== '') {
         ret.push(
-          `mkdir -p "${this.config.githubRunnerHomeDir}"`,
-          `cd "${this.config.githubRunnerHomeDir}"`,
+          `mkdir -p "${this.config.github.runnerHomeDir}"`,
+          `cd "${this.config.github.runnerHomeDir}"`,
         );
       } else {
         ret.push(
@@ -87,15 +87,15 @@ export class AwsUtils {
         );
       }
 
-      if (this.config.githubRunnerPreRunnerScript !== '') {
+      if (this.config.github.runnerPreRunnerScript !== '') {
         // add pre-runner script
         ret.push(
-          `echo "${this.config.githubRunnerPreRunnerScript}" > pre-runner-script.sh`,
+          `echo "${this.config.github.runnerPreRunnerScript}" > pre-runner-script.sh`,
           'source pre-runner-script.sh',
         );
       }
 
-      if (this.config.githubActionRunnerVersion !== 'none') {
+      if (this.config.github.actionRunnerVersion !== 'none') {
         // install actions-runner software
         ret.push(
           `curl -o actions-runner.tar.gz -L https://github.com/actions/runner/releases/download/v${runnerVersion}/actions-runner-linux-$ARCH-${runnerVersion}.tar.gz`,
@@ -105,19 +105,19 @@ export class AwsUtils {
 
       // start actions-runner software
       ret.push(
-        `./config.sh --url https://github.com/${this.config.githubOwner}/${this.config.githubRepo} --token ${githubRegistrationToken} --labels ${this.config.githubActionRunnerLabel} --name ${this.config.githubActionRunnerLabel} --unattended`,
+        `./config.sh --url https://github.com/${this.config.github.owner}/${this.config.github.repo} --token ${githubRegistrationToken} --labels ${this.config.github.actionRunnerLabel} --name ${this.config.github.actionRunnerLabel} --unattended`,
         './run.sh',
       );
 
       return ret;
     } else {
-      core.error(`Unsupported ec2-os: ${this.config.ec2Os}`);
+      core.error(`Unsupported ec2-os: ${this.config.ec2.os}`);
       return [];
     }
   }
 
   buildMarketOptions(): InstanceMarketOptionsRequest | undefined {
-    if (this.config.ec2UseSpot) {
+    if (this.config.ec2.useSpot) {
       return {
         MarketType: 'spot',
         SpotOptions: {
@@ -130,46 +130,46 @@ export class AwsUtils {
   }
 
   buildBlockMappings(): BlockDeviceMapping[] | undefined {
-    if (this.config.ec2StorageSize === undefined
-      && this.config.ec2StorageIops === undefined
-      && this.config.ec2StorageType === undefined
-      && this.config.ec2StorageThroughput === undefined) {
+    if (this.config.ec2.storageSize === undefined
+      && this.config.ec2.storageIops === undefined
+      && this.config.ec2.storageType === undefined
+      && this.config.ec2.storageThroughput === undefined) {
       return undefined;
     }
 
     return [
       {
-        DeviceName: this.config.ec2StorageDeviceName,
+        DeviceName: this.config.ec2.storageDeviceName,
         Ebs: {
           DeleteOnTermination: true,
-          VolumeSize: this.config.ec2StorageSize,
-          Iops: this.config.ec2StorageIops,
-          VolumeType: this.config.ec2StorageType,
-          Throughput: this.config.ec2StorageThroughput,
+          VolumeSize: this.config.ec2.storageSize,
+          Iops: this.config.ec2.storageIops,
+          VolumeType: this.config.ec2.storageType,
+          Throughput: this.config.ec2.storageThroughput,
         },
       },
     ];
   }
 
   buildKeyConfig(): string | undefined {
-    if (this.config.awsKeyPairName === undefined
-      || this.config.awsKeyPairName === '') {
+    if (this.config.aws.keyPairName === undefined
+      || this.config.aws.keyPairName === '') {
       return undefined;
     }
 
-    return this.config.awsKeyPairName;
+    return this.config.aws.keyPairName;
   }
 
   buildNetworkConfig(): InstanceNetworkInterfaceSpecification[] | undefined {
-    if (this.config.ec2AssociatePublicIp === undefined) {
+    if (this.config.ec2.associatePublicIp === undefined) {
       return undefined;
     }
 
     return [
       {
         DeviceIndex: 0,
-        AssociatePublicIpAddress: this.config.ec2AssociatePublicIp,
-        SubnetId: this.config.ec2SubnetId,
+        AssociatePublicIpAddress: this.config.ec2.associatePublicIp,
+        SubnetId: this.config.ec2.subnetId,
       },
     ];
   }
@@ -180,22 +180,22 @@ export class AwsUtils {
     const userData = await this.buildUserDataScript(githubRegistrationToken, githubToken);
 
     const params: RunInstancesCommandInput = {
-      ImageId: this.config.ec2AmiId,
-      InstanceType: this.config.ec2InstanceType,
+      ImageId: this.config.ec2.amiId,
+      InstanceType: this.config.ec2.instanceType,
       MinCount: 1,
       MaxCount: 1,
       UserData: Buffer.from(userData.join('\n')).toString('base64'),
-      SecurityGroupIds: [this.config.ec2SecurityGroupId],
-      IamInstanceProfile: { Name: this.config.awsIamRoleName },
+      SecurityGroupIds: [this.config.ec2.securityGroupId],
+      IamInstanceProfile: { Name: this.config.aws.iamRoleName },
       KeyName: this.buildKeyConfig(),
-      TagSpecifications: this.config.ec2InstanceTags,
+      TagSpecifications: this.config.ec2.instanceTags,
       InstanceMarketOptions: this.buildMarketOptions(),
       BlockDeviceMappings: this.buildBlockMappings(),
-      SubnetId: this.config.ec2SubnetId,
+      SubnetId: this.config.ec2.subnetId,
       NetworkInterfaces: this.buildNetworkConfig(),
     };
 
-    const maxRetries = this.config.ec2MaxRetries;
+    const maxRetries = this.config.ec2.maxRetries;
     let retryCount = 0;
 
     core.group('AWS Run Instance params', async () => {
