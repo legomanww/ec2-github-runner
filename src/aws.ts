@@ -166,6 +166,7 @@ export class AwsUtils {
         DeviceIndex: 0,
         AssociatePublicIpAddress: this.config.ec2.associatePublicIp,
         SubnetId: this.config.ec2.subnetId,
+        Groups: [this.config.ec2.securityGroupId],
       },
     ];
   }
@@ -181,7 +182,6 @@ export class AwsUtils {
       MinCount: 1,
       MaxCount: 1,
       UserData: Buffer.from(userData.join('\n')).toString('base64'),
-      SecurityGroupIds: [this.config.ec2.securityGroupId],
       IamInstanceProfile: { Name: this.config.aws.iamRoleName },
       KeyName: this.buildKeyConfig(),
       TagSpecifications: this.config.ec2.instanceTags,
