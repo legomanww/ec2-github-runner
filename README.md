@@ -1,6 +1,6 @@
 # On-demand GitHub Actions self-hosted runner on AWS EC2
 
-originally forked from [machulav/ec2-github-runner](https://github.com/machulav/ec2-github-runner) and then modified.
+originally forked from [Dmitry1987/ec2-github-runner](https://github.com/Dmitry1987/ec2-github-runner), which was a fork of [machulav/ec2-github-runner](https://github.com/machulav/ec2-github-runner), and then modified.
 > [!WARNING]
 >
 > Note the security implications as mentioned in [machulav/ec2-github-runner](https://github.com/machulav/ec2-github-runner?tab=readme-ov-file#self-hosted-runner-security-with-public-repositories)
