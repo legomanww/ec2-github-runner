@@ -14,6 +14,11 @@ inputs:
       Version of the Runner software to use. Defaults to 'latest'. Use 'none' to skip install
     required: false
     default: latest
+  registration-timeout:
+    description: >-
+      Timeout in minutes while waiting for the runner to register with Github. Defaults to 5 minutes.
+    required: false
+    default: '5'
   ec2-image-id:
     description: >-
       EC2 Image Id (AMI). The new runner will be launched from this image.

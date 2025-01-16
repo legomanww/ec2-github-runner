@@ -181,6 +181,7 @@ Now you're ready to go!
 |-|-|-|
 | `github-token` | ✅ | GitHub Personal Access Token with the `repo` scope assigned. |
 | `runner-version` | - | Version of the Github Actions Runner software to use. Defaults to `latest`, use `none` to skip install if it already installed as part of the AMI. |
+| `registration-timeout` | - | Timeout in minutes while waiting for the runner to register with Github. Defaults to 5 minutes. |
 | `ec2-image-id` | ✅ | EC2 Image Id (AMI). <br><br> The new runner will be launched from this image. |
 | `ec2-instance-type` | ✅ | EC2 Instance Type. |
 | `ec2-os` | - | Base OS type of the EC2 image (AMI). This defaults to Linux.  The new runner needs to be configured based on OS: <br> - `windows` <br> - `linux`  |

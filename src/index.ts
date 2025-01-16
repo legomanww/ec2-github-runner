@@ -22,7 +22,7 @@ async function start(config: StartConfig): Promise<void> {
   setOutputs(label, ec2InstanceId);
   await AwsUtils.waitForInstanceRunning(ec2InstanceId);
   try {
-    if (!await gh.waitForRunnerRegistered(label)) {
+    if (!await gh.waitForRunnerRegistered(label, config.github.registrationTimeoutInMinutes)) {
       setFailed('Runner did not register');
     }
   } catch (error) {

@@ -94,8 +94,7 @@ export class GithubUtils {
     }
   }
 
-  async waitForRunnerRegistered(label: string): Promise<boolean> {
-    const timeoutMinutes = 5;
+  async waitForRunnerRegistered(label: string, timeoutMinutes: number): Promise<boolean> {
     const retryIntervalSeconds = 10;
     const quietPeriodSeconds = 30;
     let waitSeconds = 0;

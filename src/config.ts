@@ -75,6 +75,7 @@ export class StartConfig extends Config {
     actionRunnerLabel: string;
     runnerHomeDir: string;
     runnerPreRunnerScript: string;
+    registrationTimeoutInMinutes: number;
   };
 
   ec2: {
@@ -110,6 +111,7 @@ export class StartConfig extends Config {
       actionRunnerLabel: this.getStringOrUndefined('label') || this.generateUniqueLabel(),
       runnerHomeDir: getInput('runner-home-dir'),
       runnerPreRunnerScript: getInput('pre-runner-script'),
+      registrationTimeoutInMinutes: this.getFloatOrUndefined('registration-timeout') || 5,
     };
 
     const tags = JSON.parse(getInput('aws-resource-tags'));
@@ -142,6 +144,9 @@ export class StartConfig extends Config {
     //
     if (this.github.token === '') {
       throw new Error(`The 'github-token' is required but was not specified`);
+    }
+    if (this.github.registrationTimeoutInMinutes <= 0) {
+      throw new Error(`The 'registration-timeout' must be a positive number`);
     }
     if (this.ec2.amiId === '' || this.ec2.instanceType === undefined || this.ec2.os === '' || this.ec2.subnetId === '' || this.ec2.securityGroupId === '') {
       throw new Error(`Not all the required inputs are provided for the 'start' mode`);
